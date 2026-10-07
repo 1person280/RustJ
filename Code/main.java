@@ -45,24 +45,24 @@ public class main {
 
         String code = new String(Files.readAllBytes(src), StandardCharsets.UTF_8);
         List<token> tokens = new lexer(code).tokenize();
-        function fn = new parser(tokens).parse();
-        byte[] object = coff.write(fn.name, emit(fn));
+        List<function> fns = new parser(tokens).parse();
+        byte[] object = coff.write("main", emit(fns));
         byte[] exe = lld.link(object);
 
         Path outDir = root.resolve("RustJ").resolve("out");
         Files.createDirectories(outDir);
-        Path objPath = outDir.resolve(fn.name + ".o");
-        Path exePath = outDir.resolve(fn.name + ".exe");
+        Path objPath = outDir.resolve("main.o");
+        Path exePath = outDir.resolve("main.exe");
         Files.write(objPath, object);
         Files.write(exePath, exe);
         System.out.println("[RustJ] 目标文件: " + root.relativize(objPath));
         System.out.println("[RustJ] 可执行文件: " + root.relativize(exePath));
     }
 
-    /* 选定 win-x64 后端，把函数发为 .text 段字节（EAX 即返回值/退出码）。 */
-    private static byte[] emit(function fn) {
+    /* 选定 win-x64 后端，把全部函数发为 .text 段字节（入口符号恒为 main）。 */
+    private static byte[] emit(List<function> fns) {
         x64 out = new x64();
-        codegen.emit(fn, out);
+        codegen.emit(fns, out);
         return out.finish();
     }
 }

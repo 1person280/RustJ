@@ -30,6 +30,17 @@ public final class locals {
         return offset;
     }
 
+    /* 参数登记：第 index 个参数位于 [rbp+16+8i]（push/call 均为 8 字节宽：rbp+0 存旧 rbp、
+       rbp+8 存返回地址、rbp+16 起为参数区），不占局部槽、不计入 size()。 */
+    public int declareParam(String name, int index, int line) {
+        if (offsets.containsKey(name)) {
+            throw new rustjerror(line, "变量重复声明: " + name);
+        }
+        int offset = 16 + 8 * index;
+        offsets.put(name, offset);
+        return offset;
+    }
+
     public int offsetOf(String name, int line) {
         Integer offset = offsets.get(name);
         if (offset == null) {

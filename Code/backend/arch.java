@@ -43,6 +43,8 @@ public interface arch {
     void bind(int label);
     void jump(int label);
     void branchIfZero(int label);
+    void call(int label);
+    void addRspImm(int n);
 
     byte[] finish();
 }

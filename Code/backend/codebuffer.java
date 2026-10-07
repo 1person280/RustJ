@@ -46,6 +46,11 @@ public final class codebuffer {
         patch(label);
     }
 
+    void call(int label) {
+        put(0xE8);          // call rel32
+        patch(label);
+    }
+
     void branchIfZero(int label) {
         put(0x85, 0xC0);    // test eax, eax
         put(0x0F, 0x84);    // jz rel32
