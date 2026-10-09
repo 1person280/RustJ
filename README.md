@@ -34,8 +34,8 @@ echo %ERRORLEVEL%
 | 包 | 职责 | 内容 |
 |---|---|---|
 | `ast/` | 纯数据语法树 | `expr` `intlit` `ident` `binop` `unop` `op` `call`；`stmt` `block` `letstmt` `assignstmt` `ifstmt` `whilestmt` `forstmt` `breakstmt` `continuestmt` `returnstmt`；`function` |
-| `frontend/` | 词法、语法、符号表、调用校验 | `token` `lexer` `cursor` `parser` `stmts` `exprs` `calls` `locals` |
-| `backend/` | 机器码、目标文件、链接、PE | `arch` `x64` `codebuffer` `codegen` `blockgen` `eval` `coff` `lld` `pe` |
+| `frontend/` | 词法、语法、符号表、调用校验 | `token` `lexer` `cursor` `parser` `stmts` `exprs` `logic` `calls` `locals` |
+| `backend/` | 机器码、目标文件、链接、PE | `arch` `x64` `codebuffer` `codegen` `blockgen` `eval` `logicemit` `coff` `lld` `pe` |
 | `error/` | 共用编译期错误 | `rustjerror` |
 
 ## 版本历史
@@ -48,6 +48,7 @@ echo %ERRORLEVEL%
 
 - [计划 0003 · RustJ 编译器](docs/0003-RustJ编译器.md) —— 上游定位 / 分发 / 分期
 - [计划 0004 · RustJ 二期实现](docs/0004-RustJ二期实现.md) —— 最小原生链路落地计划与进度
+- [计划 0005 · RustJ 三期计划](docs/0005-RustJ三期计划.md) —— 三期路线（结构体/模块/泛型·trait/sysroot/增量缓存）与产出判据
 
 ## 许可
 

@@ -1,7 +1,7 @@
 # 计划 0004 · RustJ 二期实现（最小原生链路）
 
 > **状态：执行中** —— 二期 2a「最小原生链路」已完成（Rust 极小子集 → 自产 COFF → 自研 Java 链接器 → win-x64 PE exe 端到端闭环）；
-> 二期 2b.1「变量绑定 + 算术表达式」、2b.2「表达式补全与比较」、2b.3「发射层重构 + 控制流」、2b.4「多函数 + 函数调用」已完成并验证；**2b.5 第一步「for/break/continue」已完成并验证**（`for.rs` 退出码断言 29，五例回归不变）。
+> 二期 2b.1「变量绑定 + 算术表达式」、2b.2「表达式补全与比较」、2b.3「发射层重构 + 控制流」、2b.4「多函数 + 函数调用」已完成并验证；**2b.5「for/break/continue」已完成并验证**（`for.rs` 退出码断言 29，六例回归不变）；**2b.5+ 第一步「bool/短路」已完成并验证**（`bool.rs` 退出码断言 35，七例回归不变）。二期收尾修复：`blockgen.java` 精简注释回到 99 行、`calls.validate` 补 forstmt 循环体遍历（for 内调用逃逸已堵住）。
 > **归属版本：不绑定游戏版本号** —— 沿用 [`0003-RustJ编译器.md`](0003-RustJ编译器.md) 的定位：RustJ 是随仓库分发的独立工具，
 > 不触碰线格式 → **不触发 `y+1`**、不打 tag、不写 BarekHistory。
 > **归属**：仓库根 `./RustJ.jar`（单文件分发）+ 源码目录 `./RustJCode/` + 编译工作目录 `./RustJ/`。
@@ -44,8 +44,8 @@
 |---|---|---|
 | 根（默认包） | 入口与流水线编排 | `main` |
 | `ast/` | 纯数据语法树节点 | 表达式 `expr` `intlit` `ident` `binop` `unop` `op`；语句 `stmt` `block` `letstmt` `assignstmt` `ifstmt` `whilestmt` `forstmt` `breakstmt` `continuestmt` `returnstmt`；函数 `function` |
-| `frontend/` | 词法、语法、符号表 | `token` `lexer` `cursor` `parser` `stmts` `ctrl` `exprs` `locals` |
-| `backend/` | 机器码、目标文件、链接、PE | `arch`（发射接口）`x64`（win-x64 实现）`codebuffer` `codegen` `blockgen` `eval` `coff` `lld` `pe` |
+| `frontend/` | 词法、语法、符号表 | `token` `lexer` `cursor` `parser` `stmts` `ctrl` `exprs` `logic` `locals` |
+| `backend/` | 机器码、目标文件、链接、PE | `arch`（发射接口）`x64`（win-x64 实现）`codebuffer` `codegen` `blockgen` `eval` `logicemit` `coff` `lld` `pe` |
 | `error/` | 前后端共用的编译期错误 | `rustjerror` |
 
 **依赖方向（无环）**：`frontend → ast`、`backend → ast`；`frontend`、`backend` 各自单向依赖 `error`；`main` 依赖全部。
@@ -75,7 +75,7 @@
 | 2b.3 | 发射层重构（AST 纯数据）+ 控制流（`if/else`、`while`、`return`、赋值） | `flow.rs` 退出码断言 55；三例回归不变 ✅ |
 | 2b.4 | 多函数 + 函数调用（多 `fn`、参数、递归、前向引用、延迟校验） | `call.rs` 退出码断言 407；四例回归不变 ✅ |
 | 2b.5 | for/break/continue（`for <ident> in <lo>..<hi>` 半开区间、步长 +1；`break`/`continue` 作用于最近一层循环，循环外报错） | `for.rs` 退出码断言 29；五例回归不变 ✅ |
-| 2b.5+ | 后续特性（`bool`/短路 → 结构体 → 模块 → 类型系统/泛型 → trait） | 待定 |
+| 2b.5+ | 后续特性（`bool`/短路 → 结构体 → 模块 → 类型系统/泛型 → trait） | 第一步 `bool`/短路已完成并验证（`bool.rs` 退出码 35）✅ |
 
 **2b.1 已定决策**（经 `plan-interrogation` 逐条确认）：
 起手特性 = 变量绑定 + 算术表达式；子集边界 = `let` + i32 字面量 + `+ - *`（含优先级/括号）+ `return`/末表达式；
@@ -102,6 +102,8 @@ codegen = 栈帧局部变量 `[rbp-4n]` + 后序栈机求值；AST = 多态类�
 
 **2b.5 已定决策**（经 `plan-interrogation` 逐条确认）：本次只做第一步 `for`/`break`/`continue`（不含 `bool`、结构体、sysroot、增量缓存）。语法 = `for <ident> in <lo>..<hi> { }`，仅半开区间 `..`、步长 +1、lo/hi 为 i32 表达式，不支持 `..=` 与标签 break；循环变量函数级可见（与 `let` 一致），循环外可引用。语义 = break/continue 不带值、无标签、作用于最近一层循环（`while` 内同样支持），循环外使用报带行号 `rustjerror`；不引入 break value 表达式。词法 = lexer 新增 `..` 两字符 PUNCT。AST = 新增 `ast/forstmt`（offset/lo/hi/body）、`ast/breakstmt`、`ast/continuestmt`（均无字段）。前端 = `stmts` 增 `parseBlock(syms, depth)` 支持嵌套递归，控制流解析（if/while/for/return/break/continue）下放新类 `frontend/ctrl`（`depth` 用于循环内校验）。后端 = 语句发射下放新类 `backend/blockgen`，codegen 仅保留函数骨架；循环上下文以 `(brk, cont)` 标号对逐层传递：`for` 显式发射 `i=lo; top: if(i>=hi) goto done; body; cont: i=i+1; goto top; done:`，break 跳 done、continue 跳 cont（while 的 cont=条件重估标号）。验收 = 新增 `examples/for.rs` 期望退出码 29，`min/arith/ops/flow/call` 五例回归不变；循环外 break/continue 以带行号 `rustjerror` 报错。
 
+**2b.5+ 第一步「bool/短路」已定决策**（经 `plan-interrogation` 逐条确认，2026-10-09 编码完成并已编译验证通过）：范围 = `true`/`false` 字面量 + `&&`/`||`/`!` 短路逻辑运算，结果仍 i32 0/1（不引入独立 bool 类型，类型系统留给后续步骤）。语义 = 操作数非零即真（C 风格），`&&`/`||` 结果规范化 0/1；`&&` 左 0 跳过右、`||` 左非 0 跳过右（除零用例可证明短路真实生效）。优先级 = `||` < `&&` < 比较 < `+ -` < `* / %` < 一元（`-`/`!` 同级）< atom，与 Rust 一致。词法 = lexer 新增 `&&`/`||` 两字符 PUNCT（`!` 走单字符）。AST = 复用 `binop`（op.AND/OR）与 `unop`（op.NOT），不新增节点类。前端 = 布尔层下放新类 `frontend/logic`（or → and → compare），`exprs` 瘦身为纯算术层（含 `!` 与 `true`/`false`，括号内完整表达式回交 logic）；`stmts`/`ctrl`/`calls` 表达式入口统一改用 `logic`。后端 = 短路发射下放新类 `backend/logicemit`（emitAnd/emitOr/emitNot），`eval` 在栈机序列前分派短路；`arch` 接口新增 `testEaxEax`/`branchIfNonZero`，`x64` 实现、`codebuffer` 新增 jnz rel32 回填。验收 = 新增 `examples/bool.rs` 期望退出码 35（用 `100/x` 除零证明短路跳过右侧），六例回归不变。
+
 ---
 
 ## 四、验证
@@ -120,6 +122,7 @@ java -jar RustJ.jar RustJCode/examples/flow.rs
 - **控制流**：`flow.rs` 为 `while` 累加 1..10（应得 55），并用两个 `if/else` 分别覆盖真/假分支；分支未按预期执行则结果偏离 55，期望 `exit=55`。
 - **多函数调用**：`call.rs` 为 `fib(14) + add(10, 20)`（main 前向引用其后定义的函数；fib 递归自调用；add 双参传参），期望 `exit=407`。
 - **for/break/continue**：`for.rs` 为 `for i in 1..10` 内奇偶分支（`continue` 跳过偶数，`s>20` 时 `break` 提前退出），并用 `while` 内 `continue` 覆盖第二层循环语义，期望 `exit=29`。
+- **bool/短路**：`bool.rs` 为 `(x != 0) && (100 / x)`、`(x == 0) || (100 / x)`（x=0 时右侧含除零，短路正确则跳过不崩）、`!(x == 0)`、`true`/`false` 字面量与优先级混排，期望 `exit=35`；若短路失效将因除零崩溃而非 35。
 - **循环外跳转**：`break;` / `continue;` 出现在任何循环之外，均以带行号 `rustjerror` 报错并退出码 1。
 - **语义检查**：`let x = y;`（`y` 未声明）、重复 `let x`、调用未定义函数、实参个数不符，均以带行号的 `rustjerror` 报错并退出码 1。
 - **提前返回**：`return`（含 `if/else` 中提前返回）经端到端验证（如 `x==1` 返回 1、`else` 返回 3）。
@@ -134,7 +137,7 @@ java -jar RustJ.jar RustJCode/examples/flow.rs
 - ❌ 不做增量缓存 / `-RJT` / `-RJCC` 实际生效（**继续占位**）。
 - ❌ 本切片不含模块 / 结构体 / trait / 泛型（子期 2b 后续）。
 - ❌ 2b.3 不含 `for`/`loop`/`break`/`continue`/`match`、函数调用、多函数（2b.4+）。
-- ❌ 不引入 `bool` 类型 / 真值字面量（条件沿用比较节点产出的 i32 0/1）；赋值不引入 `mut`（对任意已声明变量可写）。
+- ❌ 不引入独立 `bool` 类型（`true`/`false` 字面量与 `&& || !` 结果均仍是 i32 0/1，独立类型留给类型系统步骤）；赋值不引入 `mut`（对任意已声明变量可写）。
 - ❌ 不侵入 `cargo`/`rustc`；不改游戏三 crate；不碰线格式 / 契约 YAML。
 - ❌ 不改游戏版本号、不触发 `y+1`、不打 tag、不写 BarekHistory。
 
