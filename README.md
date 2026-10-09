@@ -33,9 +33,9 @@ echo %ERRORLEVEL%
 
 | 包 | 职责 | 内容 |
 |---|---|---|
-| `ast/` | 纯数据语法树 | `expr` `intlit` `ident` `binop` `unop` `op` `call`；`stmt` `block` `letstmt` `assignstmt` `ifstmt` `whilestmt` `returnstmt`；`function` |
+| `ast/` | 纯数据语法树 | `expr` `intlit` `ident` `binop` `unop` `op` `call`；`stmt` `block` `letstmt` `assignstmt` `ifstmt` `whilestmt` `forstmt` `breakstmt` `continuestmt` `returnstmt`；`function` |
 | `frontend/` | 词法、语法、符号表、调用校验 | `token` `lexer` `cursor` `parser` `stmts` `exprs` `calls` `locals` |
-| `backend/` | 机器码、目标文件、链接、PE | `arch` `x64` `codebuffer` `codegen` `eval` `coff` `lld` `pe` |
+| `backend/` | 机器码、目标文件、链接、PE | `arch` `x64` `codebuffer` `codegen` `blockgen` `eval` `coff` `lld` `pe` |
 | `error/` | 共用编译期错误 | `rustjerror` |
 
 ## 版本历史
