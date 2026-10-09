@@ -2,7 +2,7 @@
  * 运算符种类常量。
  *
  * 做什么：用一个 int 编码区分 binop / unop 的具体运算，供前端构造、后端分派。
- * 提供什么功能：算术 `+ - * / %`、比较 `== != < <= > >=`、一元负号 NEG 的常量。
+ * 提供什么功能：算术 `+ - * / %`、比较 `== != < <= > >=`、一元负号 NEG、逻辑短路 `&& || !` 的常量。
  *
  * 为什么用 int 而非每个运算一个节点类：节点类会随运算数量线性膨胀
  * （原 ast/compute 已 12 个类）；合并为「数据 + 运算种类」后，新增运算只需加一个常量、
@@ -23,6 +23,9 @@ public final class op {
     public static final int GT = 9;
     public static final int GE = 10;
     public static final int NEG = 11;
+    public static final int AND = 12;
+    public static final int OR = 13;
+    public static final int NOT = 14;
 
     private op() {
     }

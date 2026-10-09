@@ -8,7 +8,7 @@
  *
  * 提供什么功能：
  *   - ctrl(cursor cur)：绑定游标。
- *   - parse(locals syms, exprs ex, stmts st, int depth)：解析一条控制流语句；
+ *   - parse(locals syms, logic ex, stmts st, int depth)：解析一条控制流语句；
  *     depth 为当前循环嵌套层数，循环体由 st.parseBlock(syms, depth + 1) 递归。
  */
 package frontend;
@@ -31,7 +31,7 @@ public final class ctrl {
         this.cur = cur;
     }
 
-    public stmt parse(locals syms, exprs ex, stmts st, int depth) {
+    public stmt parse(locals syms, logic ex, stmts st, int depth) {
         if (cur.peek("if")) return parseIf(syms, ex, st, depth);
         if (cur.peek("while")) return parseWhile(syms, ex, st, depth);
         if (cur.peek("for")) return parseFor(syms, ex, st, depth);
@@ -39,7 +39,7 @@ public final class ctrl {
         return parseJump(depth);
     }
 
-    private ifstmt parseIf(locals syms, exprs ex, stmts st, int depth) {
+    private ifstmt parseIf(locals syms, logic ex, stmts st, int depth) {
         cur.expect("if");
         expr cond = ex.parse();
         block then = st.parseBlock(syms, depth);
@@ -51,13 +51,13 @@ public final class ctrl {
         return new ifstmt(cond, then, els);
     }
 
-    private whilestmt parseWhile(locals syms, exprs ex, stmts st, int depth) {
+    private whilestmt parseWhile(locals syms, logic ex, stmts st, int depth) {
         cur.expect("while");
         expr cond = ex.parse();
         return new whilestmt(cond, st.parseBlock(syms, depth + 1));
     }
 
-    private forstmt parseFor(locals syms, exprs ex, stmts st, int depth) {
+    private forstmt parseFor(locals syms, logic ex, stmts st, int depth) {
         cur.expect("for");
         token nm = cur.next(token.kind.IDENT, "循环变量名");
         cur.expect("in");
@@ -68,7 +68,7 @@ public final class ctrl {
         return new forstmt(offset, lo, hi, st.parseBlock(syms, depth + 1));
     }
 
-    private returnstmt parseReturn(exprs ex) {
+    private returnstmt parseReturn(logic ex) {
         cur.expect("return");
         expr value = cur.peek(";") ? null : ex.parse();
         if (cur.peek(";")) cur.advance();

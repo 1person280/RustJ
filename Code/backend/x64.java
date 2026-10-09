@@ -60,6 +60,8 @@ public final class x64 implements arch {
     public void bind(int label) { buf.bind(label); }
     public void jump(int label) { buf.jump(label); }
     public void branchIfZero(int label) { buf.branchIfZero(label); }
+    public void testEaxEax() { buf.put(0x85, 0xC0); }
+    public void branchIfNonZero(int label) { buf.branchIfNonZero(label); }
     public void call(int label) { buf.call(label); }
 
     /* 清理调用方压栈的实参（n 为参数个数，push 为 8 字节宽）；n 为 0 时不发指令。 */

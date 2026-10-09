@@ -37,7 +37,7 @@ public final class stmts {
     /* 解析嵌套块；if/while/for 的循环体由 ctrl 通过本方法递归，depth 用于 break/continue 校验。 */
     block parseBlock(locals syms, int depth) {
         cur.expect("{");
-        exprs ex = new exprs(cur, syms);
+        logic ex = new logic(cur, syms);
         List<stmt> list = new ArrayList<>();
         while (true) {
             if (cur.peek("let")) list.add(parseLet(syms, ex));
@@ -53,7 +53,7 @@ public final class stmts {
         return new block(list, tail);
     }
 
-    private letstmt parseLet(locals syms, exprs ex) {
+    private letstmt parseLet(locals syms, logic ex) {
         cur.expect("let");
         token nm = cur.next(token.kind.IDENT, "变量名");
         int offset = syms.declare(nm.text, nm.line);
@@ -63,7 +63,7 @@ public final class stmts {
         return new letstmt(offset, init);
     }
 
-    private assignstmt parseAssign(locals syms, exprs ex) {
+    private assignstmt parseAssign(locals syms, logic ex) {
         token nm = cur.take();
         int offset = syms.offsetOf(nm.text, nm.line);
         cur.expect("=");

@@ -7,7 +7,7 @@
  *
  * 提供什么功能：
  *   - calls(cursor cur)：绑定游标，供解析实参列表。
- *   - parseArgs(exprs ex, token name)：解析实参并产出 ast.call 节点。
+ *   - parseArgs(logic ex, token name)：解析实参并产出 ast.call 节点。
  *   - validate(List<function> fns)：全 AST 调用点校验，违规以 rustjerror 带行号报错。
  */
 package frontend;
@@ -16,6 +16,7 @@ import ast.assignstmt;
 import ast.block;
 import ast.call;
 import ast.expr;
+import ast.forstmt;
 import ast.function;
 import ast.ifstmt;
 import ast.letstmt;
@@ -36,7 +37,7 @@ public final class calls {
     }
 
     /* 实参列表：调用点处 IDENT 已被上游取出，这里从 '(' 解析到 ')'。 */
-    public expr parseArgs(exprs ex, token name) {
+    public expr parseArgs(logic ex, token name) {
         cur.expect("(");
         List<expr> args = new ArrayList<>();
         while (!cur.peek(")")) {
@@ -65,6 +66,7 @@ public final class calls {
         else if (s instanceof returnstmt r) { if (r.value != null) checkExpr(r.value, arity); }
         else if (s instanceof ifstmt i) { checkExpr(i.cond, arity); checkBlock(i.then, arity); if (i.els != null) checkBlock(i.els, arity); }
         else if (s instanceof whilestmt w) { checkExpr(w.cond, arity); checkBlock(w.body, arity); }
+        else if (s instanceof forstmt f) { checkExpr(f.lo, arity); checkExpr(f.hi, arity); checkBlock(f.body, arity); }
     }
 
     private static void checkExpr(expr e, Map<String, Integer> arity) {

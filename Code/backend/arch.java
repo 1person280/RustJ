@@ -4,7 +4,7 @@
  * 做什么：把「栈机式求值 + 控制流」所需的最小指令集合抽象成接口，使代码生成
  *   （backend.codegen / backend.eval）与具体硬件架构解耦。
  * 提供什么功能：栈帧建立/拆除、常量与变量槽读写、栈机 push/pop、算术、比较、
- *   标号与相对跳转，以及返回 .text 字节流。
+ *   标号与相对跳转、逻辑短路（test/jnz），以及返回 .text 字节流。
  * 为什么：新增架构（如 arm64）只需再实现本接口一个类，AST 与代码生成均无需改动。
  */
 package backend;
@@ -42,7 +42,9 @@ public interface arch {
     int newLabel();
     void bind(int label);
     void jump(int label);
+    void testEaxEax();
     void branchIfZero(int label);
+    void branchIfNonZero(int label);
     void call(int label);
     void addRspImm(int n);
 

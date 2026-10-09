@@ -1,12 +1,12 @@
 /*
  * 表达式子解析器（优先级分层）。
  *
- * 做什么：按优先级自低到高递归下降解析表达式（compare → add → mul → unary → atom），
- *   独立成类，是为了让每个文件都守住「单文件 < 100 行」的上限，也让「语句」与「表达式」职责分明。
+ * 做什么：按优先级自低到高递归下降解析算术层（add → mul → unary → atom）；
+ *   布尔层（|| && 与比较）由 frontend.logic 负责。独立成类守住
+ *   「单文件 < 100 行」上限，也让「逻辑层」与「算术层」职责分明。
  * 提供什么功能：
- *   - exprs(cursor cur, locals syms)：绑定游标与符号表。
- *   - parse()：解析一个完整表达式，返回其 AST 根节点（纯数据，发射交给后端）；
- *     调用点的实参列表委托给 frontend.calls 解析。
+ *   - add()：算术加减层，供 logic.compare 委托调用。
+ *   - atom()：字面量 / 标识符 / 调用 / 括号（括号内完整表达式回交 logic 解析）。
  */
 package frontend;
 
@@ -21,26 +21,16 @@ import error.rustjerror;
 public final class exprs {
     private final cursor cur;
     private final locals syms;
+    private final logic parent;
 
-    public exprs(cursor cur, locals syms) {
+    public exprs(cursor cur, locals syms, logic parent) {
         this.cur = cur;
         this.syms = syms;
+        this.parent = parent;
     }
 
-    public expr parse() {
-        return compare();
-    }
-
-    private expr compare() {
-        expr left = add();
-        while (isCompare()) {
-            int kind = compareKind(cur.take().text);
-            left = new binop(kind, left, add());
-        }
-        return left;
-    }
-
-    private expr add() {
+    /* 算术加减层：供 logic.compare 委托，包级可见（同包 frontend）。 */
+    expr add() {
         expr left = mul();
         while (cur.peek("+") || cur.peek("-")) {
             int kind = cur.take().text.equals("+") ? op.ADD : op.SUB;
@@ -64,36 +54,28 @@ public final class exprs {
             cur.advance();
             return new unop(op.NEG, unary());
         }
+        if (cur.peek("!")) {
+            cur.advance();
+            return new unop(op.NOT, unary());
+        }
         return atom();
     }
 
     private expr atom() {
         if (cur.peek("(")) {
             cur.advance();
-            expr inner = compare();      // 括号内是完整表达式
+            expr inner = parent.parse();  // 括号内是完整表达式（含逻辑层）
             cur.expect(")");
             return inner;
         }
         token t = cur.take();
         if (t.type == token.kind.INT) return new intlit(Integer.parseInt(t.text));
         if (t.type == token.kind.IDENT) {
-            if (cur.peek("(")) return new calls(cur).parseArgs(this, t);
+            if (t.text.equals("true")) return new intlit(1);
+            if (t.text.equals("false")) return new intlit(0);
+            if (cur.peek("(")) return new calls(cur).parseArgs(parent, t);
             return new ident(syms.offsetOf(t.text, t.line));
         }
         throw new rustjerror(t.line, "期望表达式，实际是 \"" + t.text + "\"");
-    }
-
-    private boolean isCompare() {
-        return cur.peek("==") || cur.peek("!=") || cur.peek("<")
-                || cur.peek("<=") || cur.peek(">") || cur.peek(">=");
-    }
-
-    private int compareKind(String o) {
-        if (o.equals("==")) return op.EQ;
-        if (o.equals("!=")) return op.NE;
-        if (o.equals("<=")) return op.LE;
-        if (o.equals(">=")) return op.GE;
-        if (o.equals("<")) return op.LT;
-        return op.GT;
     }
 }

@@ -2,10 +2,8 @@
  * 语句级代码生成（块与语句发射）。
  *
  * 做什么：承接 codegen 下放的语句发射——按序发射块内语句、处理块尾表达式，
- *   并负责 if / while / for / break / continue 的标号布局。
- * 循环上下文：brk/cont 为最近一层循环的出口/步进标号，-1 表示不在循环内；
- *   break 跳 brk，continue 跳 cont（for 的 cont 指向步进，while 指向条件重估）。
- *
+ *   并负责 return / if / while / for 的标号布局（循环上下文 brk/cont：
+ *   break 跳 brk，continue 跳 cont，-1 表示不在循环内）。
  * 提供什么功能：emitBlock(...)。机器码经 arch 下达，与目标架构解耦。
  */
 package backend;

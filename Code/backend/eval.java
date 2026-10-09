@@ -23,7 +23,11 @@ public final class eval {
     public static void emit(expr e, arch out, Map<String, Integer> targets) {
         if (e instanceof intlit n) { out.movEaxImm(n.value); return; }
         if (e instanceof ident v) { out.loadEax(v.offset); return; }
-        if (e instanceof unop u) { emit(u.operand, out, targets); out.negEax(); return; }
+        if (e instanceof unop u) {
+            emit(u.operand, out, targets);
+            if (u.kind == op.NOT) logicemit.emitNot(out); else out.negEax();
+            return;
+        }
         if (e instanceof call c) { emitCall(c, out, targets); return; }
         emitBinary((binop) e, out, targets);
     }
@@ -38,6 +42,8 @@ public final class eval {
 
     /* 栈机求值：左值入栈 → 右值算入 EAX → 取出左值 → 运算结果回 EAX。 */
     private static void emitBinary(binop b, arch out, Map<String, Integer> targets) {
+        if (b.kind == op.AND) { logicemit.emitAnd(b.left, b.right, out, targets); return; }
+        if (b.kind == op.OR) { logicemit.emitOr(b.left, b.right, out, targets); return; }
         emit(b.left, out, targets);
         out.pushEax();
         emit(b.right, out, targets);

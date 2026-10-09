@@ -6,7 +6,7 @@
  * 提供什么功能：
  *   - lexer(String src)：绑定待分析的源码字符串。
  *   - tokenize()：返回 token 列表，末尾必定附加一个 EOF 单元。
- *   - 识别范围：标识符/关键字（含 let）、整数字面量、`->`、`..`，
+ *   - 识别范围：标识符/关键字（含 let）、整数字面量、`->`、`..`、`&&`/`||`，
  *     以及单字符标点（供 + - * ( ) ; = 等使用）。
  */
 package frontend;
@@ -40,6 +40,9 @@ public final class lexer {
                 pos += 2;
                 out.add(new token(token.kind.ARROW, "->", line));
             } else if ((c == '=' || c == '!' || c == '<' || c == '>') && peek(1) == '=') {
+                pos += 2;
+                out.add(new token(token.kind.PUNCT, src.substring(pos - 2, pos), line));
+            } else if ((c == '&' || c == '|') && peek(1) == c) {
                 pos += 2;
                 out.add(new token(token.kind.PUNCT, src.substring(pos - 2, pos), line));
             } else if (c == '.' && peek(1) == '.') {

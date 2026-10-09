@@ -6,7 +6,7 @@
  * 提供什么功能：
  *   - put / putInt：追加原始字节与 32 位小端整数；
  *   - newLabel / bind：分配标号并把它绑定到当前位置；
- *   - jump / branchIfZero：发出 jmp / jz（test eax,eax 后的条件跳转）并登记待回填位置；
+ *   - jump / branchIfZero / branchIfNonZero：发出 jmp / jz / jnz（test eax,eax 后的条件跳转）并登记待回填位置；
  *   - bytes：回填全部相对位移后返回 .text 字节流。
  */
 package backend;
@@ -54,6 +54,12 @@ public final class codebuffer {
     void branchIfZero(int label) {
         put(0x85, 0xC0);    // test eax, eax
         put(0x0F, 0x84);    // jz rel32
+        patch(label);
+    }
+
+    void branchIfNonZero(int label) {
+        put(0x85, 0xC0);    // test eax, eax
+        put(0x0F, 0x85);    // jnz rel32
         patch(label);
     }
 
