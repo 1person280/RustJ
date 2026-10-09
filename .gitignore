@@ -3,3 +3,4 @@
 /RustJ/
 /build/
 *.class
+/.vscode/
