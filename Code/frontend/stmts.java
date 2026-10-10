@@ -16,17 +16,21 @@ package frontend;
 import ast.assignstmt;
 import ast.block;
 import ast.expr;
+import ast.fieldassignstmt;
 import ast.letstmt;
 import ast.stmt;
+import ast.structlit;
 import java.util.ArrayList;
 import java.util.List;
 
 public final class stmts {
     private final cursor cur;
     private final ctrl ctl;
+    private final structs st;
 
-    public stmts(cursor cur) {
+    public stmts(cursor cur, structs st) {
         this.cur = cur;
+        this.st = st;
         this.ctl = new ctrl(cur);
     }
 
@@ -37,7 +41,7 @@ public final class stmts {
     /* 解析嵌套块；if/while/for 的循环体由 ctrl 通过本方法递归，depth 用于 break/continue 校验。 */
     block parseBlock(locals syms, int depth) {
         cur.expect("{");
-        logic ex = new logic(cur, syms);
+        logic ex = new logic(cur, syms, st);
         List<stmt> list = new ArrayList<>();
         while (true) {
             if (cur.peek("let")) list.add(parseLet(syms, ex));
@@ -56,16 +60,27 @@ public final class stmts {
     private letstmt parseLet(locals syms, logic ex) {
         cur.expect("let");
         token nm = cur.next(token.kind.IDENT, "变量名");
-        int offset = syms.declare(nm.text, nm.line);
         cur.expect("=");
         expr init = ex.parse();
         if (cur.peek(";")) cur.advance();
-        return new letstmt(offset, init);
+        if (init instanceof structlit g)
+            return new letstmt(syms.declare(nm.text, g.typeName, st.fieldCount(g.typeName, nm.line), nm.line), init);
+        return new letstmt(syms.declare(nm.text, nm.line), init);
     }
 
-    private assignstmt parseAssign(locals syms, logic ex) {
+    /* 赋值：普通变量写槽；`p.x = v` 按变量基址 + 字段序号×4 合成 disp 写字段槽。 */
+    private stmt parseAssign(locals syms, logic ex) {
         token nm = cur.take();
         int offset = syms.offsetOf(nm.text, nm.line);
+        if (cur.peek(".")) {
+            cur.advance();
+            token f = cur.next(token.kind.IDENT, "字段名");
+            int disp = offset + st.fieldIndex(syms.typeOf(nm.text, nm.line), f.text, f.line) * 4;
+            cur.expect("=");
+            expr value = ex.parse();
+            if (cur.peek(";")) cur.advance();
+            return new fieldassignstmt(disp, value);
+        }
         cur.expect("=");
         expr value = ex.parse();
         if (cur.peek(";")) cur.advance();

@@ -16,9 +16,9 @@ public final class logic {
     private final cursor cur;
     private final exprs ex;
 
-    public logic(cursor cur, locals syms) {
+    public logic(cursor cur, locals syms, structs st) {
         this.cur = cur;
-        this.ex = new exprs(cur, syms, this);
+        this.ex = new exprs(cur, syms, this, st);
     }
 
     public expr parse() {

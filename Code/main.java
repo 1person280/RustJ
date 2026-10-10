@@ -6,6 +6,7 @@
  *   每次编译前合并一次，命中直接复制产物到 RustJ/out/，未命中走全流程并写缓存。
  */
 import ast.function;
+import ast.program;
 import cache.*;
 import backend.codebuffer;
 import backend.codegen;
@@ -55,9 +56,11 @@ public class main {
         }
         String code = new String(srcBytes, StandardCharsets.UTF_8);
         List<token> tokens = new lexer(code).tokenize();
-        List<function> fns = new parser(tokens).parse();
+        program pr = new parser(tokens).parse();
         codebuffer.clearExterns();
-        byte[] object = coff.write("main", emit(fns), codebuffer.extRelocs, codebuffer.extSyms);
+        x64 out = new x64();
+        int mainOff = codegen.emit(pr.fns, out);
+        byte[] object = coff.write("main", mainOff, out.finish(), codebuffer.extRelocs, codebuffer.extSyms);
         byte[] exe = lld.link(object, archive);
         Files.createDirectories(outDir);
         Files.write(outDir.resolve("main.o"), object);
@@ -80,12 +83,5 @@ public class main {
             Files.write(ar, data);
         }
         return Files.readAllBytes(ar);
-    }
-
-    /* 选定 win-x64 后端，把全部函数发为 .text 段字节（入口符号恒为 main）。 */
-    private static byte[] emit(List<function> fns) {
-        x64 out = new x64();
-        codegen.emit(fns, out);
-        return out.finish();
     }
 }

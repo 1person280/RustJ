@@ -13,9 +13,11 @@ package backend;
 import ast.binop;
 import ast.call;
 import ast.expr;
+import ast.field;
 import ast.ident;
 import ast.intlit;
 import ast.op;
+import ast.structlit;
 import ast.unop;
 import java.util.Map;
 
@@ -23,6 +25,8 @@ public final class eval {
     public static void emit(expr e, arch out, Map<String, Integer> targets) {
         if (e instanceof intlit n) { out.movEaxImm(n.value); return; }
         if (e instanceof ident v) { out.loadEax(v.offset); return; }
+        if (e instanceof field f) { out.loadEax(f.disp); return; }
+        if (e instanceof structlit) throw new IllegalArgumentException("结构体构造只能作为 let 初始化");
         if (e instanceof unop u) {
             emit(u.operand, out, targets);
             if (u.kind == op.NOT) logicemit.emitNot(out); else out.negEax();

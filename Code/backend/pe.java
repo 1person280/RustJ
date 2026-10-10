@@ -24,7 +24,7 @@ public final class pe {
     private pe() {
     }
 
-    public static byte[] write(byte[] text) {
+    public static byte[] write(byte[] text, int entryOffset) {
         int rawSize = align(text.length, FILE_ALIGN);
         int imageSize = align(SECTION_ALIGN + text.length, SECTION_ALIGN);
         ByteBuffer b = ByteBuffer.allocate(FILE_ALIGN + rawSize).order(ByteOrder.LITTLE_ENDIAN);
@@ -41,7 +41,7 @@ public final class pe {
         // IMAGE_OPTIONAL_HEADER64（0x98）
         b.putShort(0x98, (short) 0x20B);          // PE32+
         b.putInt(0x9C, rawSize);                  // SizeOfCode
-        b.putInt(0xA8, SECTION_ALIGN);            // AddressOfEntryPoint
+        b.putInt(0xA8, SECTION_ALIGN + entryOffset);  // AddressOfEntryPoint = .text 基址 + main 偏移
         b.putInt(0xAC, SECTION_ALIGN);            // BaseOfCode
         b.putLong(0xB0, IMAGE_BASE);              // ImageBase
         b.putInt(0xB8, SECTION_ALIGN);            // SectionAlignment

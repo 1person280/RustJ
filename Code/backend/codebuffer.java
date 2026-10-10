@@ -26,6 +26,9 @@ public final class codebuffer {
         labelPos.add(-1);
         return labelPos.size() - 1;
     }
+    int posOf(int label) {
+        return labelPos.get(label);
+    }
     void bind(int label) {
         labelPos.set(label, len);
     }

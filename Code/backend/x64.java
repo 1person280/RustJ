@@ -57,6 +57,7 @@ public final class x64 implements arch {
     public void movzxEaxAl() { buf.put(0x0F, 0xB6, 0xC0); }
 
     public int newLabel() { return buf.newLabel(); }
+    public int posOf(int label) { return buf.posOf(label); }
     public void bind(int label) { buf.bind(label); }
     public void jump(int label) { buf.jump(label); }
     public void branchIfZero(int label) { buf.branchIfZero(label); }

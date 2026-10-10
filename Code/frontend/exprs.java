@@ -22,11 +22,13 @@ public final class exprs {
     private final cursor cur;
     private final locals syms;
     private final logic parent;
+    private final structs st;
 
-    public exprs(cursor cur, locals syms, logic parent) {
+    public exprs(cursor cur, locals syms, logic parent, structs st) {
         this.cur = cur;
         this.syms = syms;
         this.parent = parent;
+        this.st = st;
     }
 
     /* 算术加减层：供 logic.compare 委托，包级可见（同包 frontend）。 */
@@ -74,6 +76,8 @@ public final class exprs {
             if (t.text.equals("true")) return new intlit(1);
             if (t.text.equals("false")) return new intlit(0);
             if (cur.peek("(")) return new calls(cur).parseArgs(parent, t);
+            if (cur.peek("{")) return new fields(cur, syms, st, parent).lit(t);
+            if (cur.peek(".")) return new fields(cur, syms, st, parent).access(t);
             return new ident(syms.offsetOf(t.text, t.line));
         }
         throw new rustjerror(t.line, "期望表达式，实际是 \"" + t.text + "\"");

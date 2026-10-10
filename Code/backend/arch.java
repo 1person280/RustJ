@@ -40,6 +40,7 @@ public interface arch {
     void movzxEaxAl();
 
     int newLabel();
+    int posOf(int label);
     void bind(int label);
     void jump(int label);
     void testEaxEax();

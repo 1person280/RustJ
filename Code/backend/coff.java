@@ -12,9 +12,13 @@ public final class coff {
     private static final int SYMBOL_EXTERNAL = 2;
     private static final int REL32 = 0x0004;
     public static byte[] write(String symbol, byte[] text) {
-        return write(symbol, text, new ArrayList<>(), new ArrayList<>());
+        return write(symbol, 0, text, new ArrayList<>(), new ArrayList<>());
     }
     public static byte[] write(String symbol, byte[] text, List<int[]> relocs, List<String> extSyms) {
+        return write(symbol, 0, text, relocs, extSyms);
+    }
+    /* mainValue：主符号在 .text 内的偏移（链接器据此定位 PE 入口点）。 */
+    public static byte[] write(String symbol, int mainValue, byte[] text, List<int[]> relocs, List<String> extSyms) {
         byte[] strtab = stringTable(symbol, extSyms);
         int rawPtr = 20 + 40;
         int relPtr = rawPtr + text.length;
@@ -44,7 +48,7 @@ public final class coff {
             b.putInt(1 + r[1]);
             b.putShort((short) REL32);
         }
-        putSymbol(b, 4, 0, 1);
+        putSymbol(b, 4, mainValue, 1);
         int off = 4 + symbol.length() + 1;
         for (String s : extSyms) {
             putSymbol(b, off, 0, 0);
