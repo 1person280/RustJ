@@ -15,6 +15,7 @@ import backend.lld;
 import backend.rtlib;
 import backend.x64;
 import frontend.lexer;
+import frontend.modules;
 import frontend.parser;
 import frontend.token;
 import java.io.InputStream;
@@ -48,15 +49,16 @@ public class main {
         byte[] archive = ensureSysroot(root);
         Path finalized = root.resolve("RustJ").resolve("incremental").resolve("finalized");
         merge.merge(finalized, limit);
-        String key = keys.key(srcBytes, archive);
+        String code = new String(srcBytes, StandardCharsets.UTF_8);
+        List<String> mods = modules.modList(code);
+        List<byte[]> depList = modules.depBytes(src.getParent(), mods);
+        String key = keys.key(srcBytes, modules.concat(depList), archive);
         Path outDir = root.resolve("RustJ").resolve("out");
         if (store.lookup(finalized, key, outDir)) {
             System.out.println("[RustJ] 缓存命中，产物已还原: " + root.relativize(outDir.resolve("main.exe")));
             return;
         }
-        String code = new String(srcBytes, StandardCharsets.UTF_8);
-        List<token> tokens = new lexer(code).tokenize();
-        program pr = new parser(tokens).parse();
+        program pr = modules.parseAll(src.getParent(), code, mods, depList);
         codebuffer.clearExterns();
         x64 out = new x64();
         int mainOff = codegen.emit(pr.fns, out);

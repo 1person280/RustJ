@@ -41,7 +41,7 @@ echo %ERRORLEVEL%
 
 ## 缓存机制
 
-增量编译缓存（2d）以**产物级缓存**为颗粒：一个编译会话的 `main.o` + `main.exe` + 元数据（源文件 SHA-256 / sysroot 归档 SHA-256 / 编译时间）作为一个缓存条目，缓存键 = 源文件 SHA-256 + sysroot 归档 SHA-256；命中时跳过 lexer→link 全流程，直接从缓存还原产物到 `RustJ/out/`。
+增量编译缓存（2d）以**产物级缓存**为颗粒：一个编译会话的 `main.o` + `main.exe` + 元数据（源文件 SHA-256 / 依赖文件 SHA-256 / sysroot 归档 SHA-256 / 编译时间）作为一个缓存条目，缓存键 = 入口源文件 SHA-256 + 依赖文件按声明序 SHA-256 + sysroot 归档 SHA-256（多文件模块任一依赖变化即整体失效）；命中时跳过 lexer→link 全流程，直接从缓存还原产物到 `RustJ/out/`。
 
 - **存储形态**：条目写入**缓存块文件**，`-RJCC` 三档（`"64K"` / `"16M"` 默认 / `"4G"`）为单个缓存块文件的体积上限；块写满即另开新块文件，不因超出上限而丢弃缓存。
 - **合并策略**：每次编译开始前执行一次缓存合并，将未满块重排归并，收拢碎片空间，避免大量仅占 ~90% 上限的块文件长期占用磁盘。
@@ -55,6 +55,7 @@ echo %ERRORLEVEL%
 | **0.1.0** | 2026-10-07 | **函数调用**：2b.4 多函数 + 函数调用落地——多 `fn` 声明、栈传参、递归与前向引用、未定义函数/实参个数延迟校验；产物文件名固定 `main.o`/`main.exe`；新增 `ast/call`、`frontend/calls`；示例 `call.rs` 退出码断言 407，`min/arith/ops/flow` 回归不变。未做：`for`/`break`/`continue`、`bool`/短路求值、结构体、模块、泛型、sysroot 接入（2c）、增量缓存（2d）。下一版本目标：见 [计划 0004 · RustJ 二期实现](docs/0004-RustJ二期实现.md) 2b.5+ |
 | **0.2.0** | 2026-10-10 | **sysroot 接入 + 增量缓存**：2c 自研最小 runtime 库（`backend/ar` + `backend/rtlib`，纯 Java 生成 `runtime.ar`，隐式全局符号）与真 COFF 重定位（lld 合并符号表 + 拼接 `.text` + 回填 rel32）；2d 产物级增量缓存（`cache/` 包四类 `keys`/`blockfile`/`store`/`merge`，缓存键 = 源 SHA-256 + sysroot 归档 SHA-256，`-RJCC` 三档控制缓存块上限，working/finalized 会话隔离，每次编译前合并）；示例 `sysroot.rs` 退出码断言 44，七例回归不变。COFF 产物格式与目录布局变化，版本号 y+1。下一版本目标：见 [计划 0005 · RustJ 三期计划](docs/0005-RustJ三期计划.md) |
 | **0.2.1** | 2026-10-10 | **3a 结构体 + 入口定位修复**：结构体顶层定义、连续 4 字节布局、`[基址+字段序号×4]` 寻址、`let` 字面量逐字段写、`impl` 方法 `self` 按值多字段压栈、符号 `Point::method`、`locals` 加类型维度（新增 `ast/structdef`/`structlit`/`field`/`fieldassignstmt`/`program`、`frontend/fields`/`structs`）；修复 PE 入口点错位 bug——`AddressOfEntryPoint` 改为 `.text` 基址 + main 符号偏移（COFF 主符号 value 携带 main 偏移），入口不再固定为段首；示例 `struct.rs` 退出码断言 7，八例回归不变。下一版本目标：见 [计划 0005 · RustJ 三期计划](docs/0005-RustJ三期计划.md) 3b |
+| **0.2.2** | 2026-10-10 | **3b 模块系统**：`mod foo;` 声明 + 同目录 `foo.rs` 单层模块、`use foo;` 引入模块名（全限定 `foo::bar()` 免 use）、`pub fn`/`pub struct` 跨模块可见（无 pub 跨模块访问报带行号 `rustjerror`）、符号 mangle `foo::bar`→`foo__bar`（入口文件函数保持裸名）、结构体类型按 `foo__Bar` mangle、不同模块允许同名函数/结构体（`math__add` 与 `game__add` 并存）、`impl` 方法符号改 `类型::方法`→`类型__方法`（新增 `frontend/modules` 多文件协调：共享符号表、先模块后入口、统一延迟校验；`parser`/`exprs`/`fields`/`vis` 扩展 mod/use/pub/路径与可见性）；缓存键改为「入口源 SHA + 依赖文件声明序 SHA + sysroot 归档 SHA」，任一依赖变化整体失效；示例 `mod.rs`（依赖 `helper.rs`，覆盖跨模块 pub fn / pub struct 构造字段 / `use helper;` 短名）退出码断言 35，八例回归不变。下一版本目标：见 [计划 0005 · RustJ 三期计划](docs/0005-RustJ三期计划.md) 3c |
 
 ## 文档
 
