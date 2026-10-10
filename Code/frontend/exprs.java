@@ -1,12 +1,14 @@
 /*
- * 表达式子解析器（优先级分层）。
+ * 表达式子解析器（优先级分层，3b 并入模块路径）。
  *
  * 做什么：按优先级自低到高递归下降解析算术层（add → mul → unary → atom）；
  *   布尔层（|| && 与比较）由 frontend.logic 负责。独立成类守住
  *   「单文件 < 100 行」上限，也让「逻辑层」与「算术层」职责分明。
+ *   3b：atom 识别 `foo::bar(...)` 路径调用与 `foo::Point { .. }` 路径构造
+ *   （符号 mangle 为 foo__bar），裸名调用/构造按当前模块 mangle 并做可见性校验。
  * 提供什么功能：
  *   - add()：算术加减层，供 logic.compare 委托调用。
- *   - atom()：字面量 / 标识符 / 调用 / 括号（括号内完整表达式回交 logic 解析）。
+ *   - atom()：字面量 / 标识符 / 调用 / 构造 / 路径 / 括号。
  */
 package frontend;
 
@@ -52,14 +54,8 @@ public final class exprs {
     }
 
     private expr unary() {
-        if (cur.peek("-")) {
-            cur.advance();
-            return new unop(op.NEG, unary());
-        }
-        if (cur.peek("!")) {
-            cur.advance();
-            return new unop(op.NOT, unary());
-        }
+        if (cur.peek("-")) { cur.advance(); return new unop(op.NEG, unary()); }
+        if (cur.peek("!")) { cur.advance(); return new unop(op.NOT, unary()); }
         return atom();
     }
 
@@ -75,11 +71,28 @@ public final class exprs {
         if (t.type == token.kind.IDENT) {
             if (t.text.equals("true")) return new intlit(1);
             if (t.text.equals("false")) return new intlit(0);
-            if (cur.peek("(")) return new calls(cur).parseArgs(parent, t);
-            if (cur.peek("{")) return new fields(cur, syms, st, parent).lit(t);
+            if (cur.peek("::")) {
+                cur.advance();
+                token m = cur.next(token.kind.IDENT, "路径名");
+                String full = t.text + "__" + m.text;
+                st.v.require(full, t.line);
+                token p = new token(token.kind.IDENT, full, t.line);
+                if (cur.peek("(")) return new calls(cur).parseArgs(parent, p);
+                if (cur.peek("{")) return new fields(cur, syms, st, parent).lit(p);
+                throw new rustjerror(t.line, "路径后应接调用或构造");
+            }
+            if (cur.peek("(")) return new calls(cur).parseArgs(parent, mangleTok(t));
+            if (cur.peek("{")) return new fields(cur, syms, st, parent).lit(mangleTok(t));
             if (cur.peek(".")) return new fields(cur, syms, st, parent).access(t);
             return new ident(syms.offsetOf(t.text, t.line));
         }
         throw new rustjerror(t.line, "期望表达式，实际是 \"" + t.text + "\"");
+    }
+
+    /* 裸名按当前模块 mangle 并做可见性校验（同一模块内通过）。 */
+    private token mangleTok(token t) {
+        String n = st.mangle(t.text);
+        st.v.require(n, t.line);
+        return new token(token.kind.IDENT, n, t.line);
     }
 }

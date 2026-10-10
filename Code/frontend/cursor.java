@@ -38,6 +38,10 @@ public final class cursor {
         return tokens.get(at).text.equals(text);
     }
 
+    public token peekTok() {
+        return tokens.get(at);
+    }
+
     public String ahead(int n) {
         int i = at + n;
         return i < tokens.size() ? tokens.get(i).text : "";

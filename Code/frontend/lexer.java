@@ -48,6 +48,9 @@ public final class lexer {
             } else if (c == '.' && peek(1) == '.') {
                 pos += 2;
                 out.add(new token(token.kind.PUNCT, "..", line));
+            } else if (c == ':' && peek(1) == ':') {
+                pos += 2;
+                out.add(new token(token.kind.PUNCT, "::", line));
             } else {
                 pos++;
                 out.add(new token(token.kind.PUNCT, String.valueOf(c), line));

@@ -60,6 +60,7 @@ public final class fields {
         cur.advance();
         token f = cur.next(token.kind.IDENT, "字段名");
         String type = syms.typeOf(obj.text, obj.line);
+        st.v.require(type, obj.line);
         if (!st.has(type)) throw new rustjerror(obj.line, "类型 " + type + " 不支持字段/方法");
         boolean slf = obj.text.equals("self");
         if (cur.peek("(")) {
@@ -75,7 +76,7 @@ public final class fields {
                 args.add(parent.parse());
             }
             cur.expect(")");
-            return new call(type + "::" + f.text, args, obj.line);
+            return new call(type + "__" + f.text, args, obj.line);
         }
         if (slf) return new ident(syms.offsetOf(f.text, f.line));
         return new field(syms.offsetOf(obj.text, obj.line) + st.fieldIndex(type, f.text, f.line) * 4, obj.line);
