@@ -19,6 +19,8 @@ import java.util.Map;
 public final class codegen {
     public static void emit(List<function> fns, arch out) {
         Map<String, Integer> targets = new HashMap<>();
+        /* 2c sysroot：库符号先注册为外部标号（负数），再分配用户函数内部标号。 */
+        for (String s : rtlib.SYMBOLS) targets.put(s, codebuffer.externLabel(s));
         for (function fn : fns) targets.put(fn.name, out.newLabel());
         for (function fn : fns) emitFn(fn, out, targets);
     }

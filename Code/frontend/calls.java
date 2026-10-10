@@ -51,6 +51,10 @@ public final class calls {
     /* 延迟校验：建「函数名 → 形参个数」表，再遍历所有函数体检查每个调用点。 */
     public static void validate(List<function> fns) {
         Map<String, Integer> arity = new HashMap<>();
+        /* 2c sysroot：预置自研 runtime 库符号的隐式 arity（用户定义同名函数可覆盖）。 */
+        arity.put("rjt_double", 1);
+        arity.put("rjt_add", 2);
+        arity.put("rjt_mul", 2);
         for (function f : fns) arity.put(f.name, f.params.size());
         for (function f : fns) checkBlock(f.body, arity);
     }
