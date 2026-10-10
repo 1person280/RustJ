@@ -146,7 +146,7 @@ Java 源码（编译器主体）置于 `./RustJCode/`，按**宽泛目的**分�
   ```powershell
   javac -d build -sourcepath RustJCode (Get-ChildItem RustJCode -Recurse -Filter *.java).FullName   # 递归编译全部 Java 源码
   jar cfe RustJ.jar main -C build .               # 打包根 ./RustJ.jar
-  java -jar RustJ.jar RustJCode/examples/min.rs   # -> RustJ/out/main.o 与 RustJ/out/main.exe
+  java -jar RustJ.jar TestCode/min.rs   # -> RustJ/out/main.o 与 RustJ/out/main.exe
   .\RustJ\out\main.exe; echo "exit=$LASTEXITCODE" # 期望 exit=0（把末值改为 42 则期望 exit=42）
   ```
   > 若 PATH 中无 `jar`（本机即如此：`javac` 走 Oracle `javapath` 而 `jar` 不在其中），改用 `"<JDK>\bin\jar"`，如 `"C:\Program Files\Java\jdk-25.0.4\bin\jar"`。

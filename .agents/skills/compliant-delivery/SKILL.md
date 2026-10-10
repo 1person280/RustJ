@@ -23,7 +23,7 @@ description: RustJ 合规交付技能——把改动按「三闸门」合规地�
 | **架构** | 依赖方向 `frontend → ast`、`backend → ast` 互不引用；`error` 单向供前后端依赖；AST 保持纯数据；后端面向 `arch` 接口 | 搜 `import` 核对依赖图 |
 | **产物** | 碰 COFF / PE 格式或 `main.java` 入口属**不兼容变更**，README 快速开始与版本号必须同步；产物只写 `RustJ/out/`（已 gitignore） | 对照 README〈快速开始〉 |
 | **文档** | 碰语言子集 / 分期进度 → 同步 `docs/0004-RustJ二期实现.md`；碰架构分层 → 同步 `docs/0003-RustJ编译器.md`；README 结构表随动 | 逐处核对 |
-| **测试** | `javac -d build -sourcepath Code Code\main.java` 退出码 0 + `examples/` 全部用例退出码断言通过（min=0 / arith=7 / ops=7 / flow=55）；新特性必配新 `.rs` 用例 | 运行 `RustJ/out/<函数名>.exe` 后查 `ERRORLEVEL` |
+| **测试** | `javac -d build -sourcepath Code Code\main.java` 退出码 0 + `TestCode/` 全部用例退出码断言通过（min=0 / arith=7 / ops=7 / flow=55）；新特性必配新 `.rs` 用例 | 运行 `RustJ/out/<函数名>.exe` 后查 `ERRORLEVEL` |
 
 Java 硬规范：异常统一走 `error/rustjerror`；标号回填只归 `codebuffer`；禁止为省行数把多个 class 塞进一个文件。
 
@@ -97,4 +97,4 @@ RustJ **不绑定游戏版本号**，采用自己的语义版本：
 - 提交信息：`<type>(<包名>): 为什么`，一次一件事。
 - 推送：分支语义化，`main` 不 force-push、不重写历史；推送前本地验证全绿。
 - 发布：`x.y.z`（`y` = 入口/产物不兼容、`z` = 加性/修复），无 v 前缀；标题 `x.y.z：<4字简述>`（4 个汉字）；README + tag + Release 一次对齐。
-- 验证命令：`javac -d build -sourcepath Code Code\main.java` → `jar cfe RustJ.jar main -C build .` → `java -jar RustJ.jar Code/examples/<用例>.rs` → 产物 `ERRORLEVEL` 断言。
+- 验证命令：`javac -d build -sourcepath Code Code\main.java` → `jar cfe RustJ.jar main -C build .` → `java -jar RustJ.jar TestCode/<用例>.rs` → 产物 `ERRORLEVEL` 断言。

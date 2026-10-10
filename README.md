@@ -20,7 +20,7 @@ javac -d build $(find Code -name "*.java")   # Windows: 用 dir /s /b Code\*.jav
 jar cfe RustJ.jar main -C build .
 
 # 编译一个 Rust 样例
-java -jar RustJ.jar Code/examples/min.rs
+java -jar RustJ.jar TestCode/min.rs
 
 # 运行产物（写入 RustJ/out/）
 RustJ/out/min.exe
@@ -33,8 +33,8 @@ echo %ERRORLEVEL%
 
 | 包 | 职责 | 内容 |
 |---|---|---|
-| `ast/` | 纯数据语法树 | `expr` `intlit` `ident` `binop` `unop` `op` `call`；`stmt` `block` `letstmt` `assignstmt` `ifstmt` `whilestmt` `forstmt` `breakstmt` `continuestmt` `returnstmt`；`function` |
-| `frontend/` | 词法、语法、符号表、调用校验 | `token` `lexer` `cursor` `parser` `stmts` `exprs` `logic` `calls` `locals` |
+| `ast/` | 纯数据语法树 | `expr` `intlit` `ident` `binop` `unop` `op` `call`；`stmt` `block` `letstmt` `assignstmt` `ifstmt` `whilestmt` `forstmt` `breakstmt` `continuestmt` `returnstmt`；`structdef` `structlit` `field` `fieldassignstmt` `program`；`function` |
+| `frontend/` | 词法、语法、符号表、调用校验 | `token` `lexer` `cursor` `parser` `stmts` `exprs` `logic` `calls` `locals` `fields` `structs` |
 | `backend/` | 机器码、目标文件、链接、PE | `arch` `x64` `codebuffer` `codegen` `blockgen` `eval` `logicemit` `coff` `lld` `pe` |
 | `cache/` | 增量编译缓存（键/块文件/存取/合并） | `keys` `blockfile` `store` `merge` |
 | `error/` | 共用编译期错误 | `rustjerror` |
@@ -54,6 +54,7 @@ echo %ERRORLEVEL%
 |---|---|---|
 | **0.1.0** | 2026-10-07 | **函数调用**：2b.4 多函数 + 函数调用落地——多 `fn` 声明、栈传参、递归与前向引用、未定义函数/实参个数延迟校验；产物文件名固定 `main.o`/`main.exe`；新增 `ast/call`、`frontend/calls`；示例 `call.rs` 退出码断言 407，`min/arith/ops/flow` 回归不变。未做：`for`/`break`/`continue`、`bool`/短路求值、结构体、模块、泛型、sysroot 接入（2c）、增量缓存（2d）。下一版本目标：见 [计划 0004 · RustJ 二期实现](docs/0004-RustJ二期实现.md) 2b.5+ |
 | **0.2.0** | 2026-10-10 | **sysroot 接入 + 增量缓存**：2c 自研最小 runtime 库（`backend/ar` + `backend/rtlib`，纯 Java 生成 `runtime.ar`，隐式全局符号）与真 COFF 重定位（lld 合并符号表 + 拼接 `.text` + 回填 rel32）；2d 产物级增量缓存（`cache/` 包四类 `keys`/`blockfile`/`store`/`merge`，缓存键 = 源 SHA-256 + sysroot 归档 SHA-256，`-RJCC` 三档控制缓存块上限，working/finalized 会话隔离，每次编译前合并）；示例 `sysroot.rs` 退出码断言 44，七例回归不变。COFF 产物格式与目录布局变化，版本号 y+1。下一版本目标：见 [计划 0005 · RustJ 三期计划](docs/0005-RustJ三期计划.md) |
+| **0.2.1** | 2026-10-10 | **3a 结构体 + 入口定位修复**：结构体顶层定义、连续 4 字节布局、`[基址+字段序号×4]` 寻址、`let` 字面量逐字段写、`impl` 方法 `self` 按值多字段压栈、符号 `Point::method`、`locals` 加类型维度（新增 `ast/structdef`/`structlit`/`field`/`fieldassignstmt`/`program`、`frontend/fields`/`structs`）；修复 PE 入口点错位 bug——`AddressOfEntryPoint` 改为 `.text` 基址 + main 符号偏移（COFF 主符号 value 携带 main 偏移），入口不再固定为段首；示例 `struct.rs` 退出码断言 7，八例回归不变。下一版本目标：见 [计划 0005 · RustJ 三期计划](docs/0005-RustJ三期计划.md) 3b |
 
 ## 文档
 

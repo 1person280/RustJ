@@ -100,9 +100,9 @@ codegen = 栈帧局部变量 `[rbp-4n]` + 后序栈机求值；AST = 多态类�
 文件组织 = 新增 `ast/call.java` + `frontend/calls.java`（实参解析 + 全 AST 调用校验一件套），`function.java` 加 `params`，`parser.java` 改为循环解析多函数；
 输出 = 目标文件/可执行文件名固定 `main.o`/`main.exe`（入口符号恒为 main）。
 
-**2b.5 已定决策**（经 `plan-interrogation` 逐条确认）：本次只做第一步 `for`/`break`/`continue`（不含 `bool`、结构体、sysroot、增量缓存）。语法 = `for <ident> in <lo>..<hi> { }`，仅半开区间 `..`、步长 +1、lo/hi 为 i32 表达式，不支持 `..=` 与标签 break；循环变量函数级可见（与 `let` 一致），循环外可引用。语义 = break/continue 不带值、无标签、作用于最近一层循环（`while` 内同样支持），循环外使用报带行号 `rustjerror`；不引入 break value 表达式。词法 = lexer 新增 `..` 两字符 PUNCT。AST = 新增 `ast/forstmt`（offset/lo/hi/body）、`ast/breakstmt`、`ast/continuestmt`（均无字段）。前端 = `stmts` 增 `parseBlock(syms, depth)` 支持嵌套递归，控制流解析（if/while/for/return/break/continue）下放新类 `frontend/ctrl`（`depth` 用于循环内校验）。后端 = 语句发射下放新类 `backend/blockgen`，codegen 仅保留函数骨架；循环上下文以 `(brk, cont)` 标号对逐层传递：`for` 显式发射 `i=lo; top: if(i>=hi) goto done; body; cont: i=i+1; goto top; done:`，break 跳 done、continue 跳 cont（while 的 cont=条件重估标号）。验收 = 新增 `examples/for.rs` 期望退出码 29，`min/arith/ops/flow/call` 五例回归不变；循环外 break/continue 以带行号 `rustjerror` 报错。
+**2b.5 已定决策**（经 `plan-interrogation` 逐条确认）：本次只做第一步 `for`/`break`/`continue`（不含 `bool`、结构体、sysroot、增量缓存）。语法 = `for <ident> in <lo>..<hi> { }`，仅半开区间 `..`、步长 +1、lo/hi 为 i32 表达式，不支持 `..=` 与标签 break；循环变量函数级可见（与 `let` 一致），循环外可引用。语义 = break/continue 不带值、无标签、作用于最近一层循环（`while` 内同样支持），循环外使用报带行号 `rustjerror`；不引入 break value 表达式。词法 = lexer 新增 `..` 两字符 PUNCT。AST = 新增 `ast/forstmt`（offset/lo/hi/body）、`ast/breakstmt`、`ast/continuestmt`（均无字段）。前端 = `stmts` 增 `parseBlock(syms, depth)` 支持嵌套递归，控制流解析（if/while/for/return/break/continue）下放新类 `frontend/ctrl`（`depth` 用于循环内校验）。后端 = 语句发射下放新类 `backend/blockgen`，codegen 仅保留函数骨架；循环上下文以 `(brk, cont)` 标号对逐层传递：`for` 显式发射 `i=lo; top: if(i>=hi) goto done; body; cont: i=i+1; goto top; done:`，break 跳 done、continue 跳 cont（while 的 cont=条件重估标号）。验收 = 新增 `TestCode/for.rs` 期望退出码 29，`min/arith/ops/flow/call` 五例回归不变；循环外 break/continue 以带行号 `rustjerror` 报错。
 
-**2b.5+ 第一步「bool/短路」已定决策**（经 `plan-interrogation` 逐条确认，2026-10-09 编码完成并已编译验证通过）：范围 = `true`/`false` 字面量 + `&&`/`||`/`!` 短路逻辑运算，结果仍 i32 0/1（不引入独立 bool 类型，类型系统留给后续步骤）。语义 = 操作数非零即真（C 风格），`&&`/`||` 结果规范化 0/1；`&&` 左 0 跳过右、`||` 左非 0 跳过右（除零用例可证明短路真实生效）。优先级 = `||` < `&&` < 比较 < `+ -` < `* / %` < 一元（`-`/`!` 同级）< atom，与 Rust 一致。词法 = lexer 新增 `&&`/`||` 两字符 PUNCT（`!` 走单字符）。AST = 复用 `binop`（op.AND/OR）与 `unop`（op.NOT），不新增节点类。前端 = 布尔层下放新类 `frontend/logic`（or → and → compare），`exprs` 瘦身为纯算术层（含 `!` 与 `true`/`false`，括号内完整表达式回交 logic）；`stmts`/`ctrl`/`calls` 表达式入口统一改用 `logic`。后端 = 短路发射下放新类 `backend/logicemit`（emitAnd/emitOr/emitNot），`eval` 在栈机序列前分派短路；`arch` 接口新增 `testEaxEax`/`branchIfNonZero`，`x64` 实现、`codebuffer` 新增 jnz rel32 回填。验收 = 新增 `examples/bool.rs` 期望退出码 35（用 `100/x` 除零证明短路跳过右侧），六例回归不变。
+**2b.5+ 第一步「bool/短路」已定决策**（经 `plan-interrogation` 逐条确认，2026-10-09 编码完成并已编译验证通过）：范围 = `true`/`false` 字面量 + `&&`/`||`/`!` 短路逻辑运算，结果仍 i32 0/1（不引入独立 bool 类型，类型系统留给后续步骤）。语义 = 操作数非零即真（C 风格），`&&`/`||` 结果规范化 0/1；`&&` 左 0 跳过右、`||` 左非 0 跳过右（除零用例可证明短路真实生效）。优先级 = `||` < `&&` < 比较 < `+ -` < `* / %` < 一元（`-`/`!` 同级）< atom，与 Rust 一致。词法 = lexer 新增 `&&`/`||` 两字符 PUNCT（`!` 走单字符）。AST = 复用 `binop`（op.AND/OR）与 `unop`（op.NOT），不新增节点类。前端 = 布尔层下放新类 `frontend/logic`（or → and → compare），`exprs` 瘦身为纯算术层（含 `!` 与 `true`/`false`，括号内完整表达式回交 logic）；`stmts`/`ctrl`/`calls` 表达式入口统一改用 `logic`。后端 = 短路发射下放新类 `backend/logicemit`（emitAnd/emitOr/emitNot），`eval` 在栈机序列前分派短路；`arch` 接口新增 `testEaxEax`/`branchIfNonZero`，`x64` 实现、`codebuffer` 新增 jnz rel32 回填。验收 = 新增 `TestCode/bool.rs` 期望退出码 35（用 `100/x` 除零证明短路跳过右侧），六例回归不变。
 
 ---
 
@@ -111,7 +111,7 @@ codegen = 栈帧局部变量 `[rbp-4n]` + 后序栈机求值；AST = 多态类�
 ```powershell
 javac -d build -sourcepath RustJCode (Get-ChildItem RustJCode -Recurse -Filter *.java).FullName
 jar cfe RustJ.jar main -C build .
-java -jar RustJ.jar RustJCode/examples/flow.rs
+java -jar RustJ.jar TestCode/flow.rs
 .\RustJ\out\main.exe; echo "exit=$LASTEXITCODE"   # 期望 55（arith.rs 期望 7、ops.rs 期望 7、min.rs 期望 0）
 ```
 

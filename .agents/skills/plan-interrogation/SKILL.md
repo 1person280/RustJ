@@ -66,9 +66,9 @@ L2+ 全过；L1 只挑相关条目；L0 只留 3.4 与 3.5。**每一条如果�
 ### 3.4 测试与验证
 
 - 验证命令是哪几条？
-  `javac -d build -sourcepath Code Code\main.java` → `jar cfe RustJ.jar main -C build .` → `java -jar RustJ.jar Code/examples/<用例>.rs` → 运行 `RustJ/out/<函数名>.exe` 断言 `ERRORLEVEL`
-- 每个新特性有没有配套 `examples/*.rs` **退出码断言用例**（如 `fn main() -> i32 { 42 }` 运行后 ERRORLEVEL 必须为 42）？
-- `examples/` 既有用例（min 期望 0、arith 期望 7、ops 期望 7、flow 期望 55）是否全部不回归？
+  `javac -d build -sourcepath Code Code\main.java` → `jar cfe RustJ.jar main -C build .` → `java -jar RustJ.jar TestCode/<用例>.rs` → 运行 `RustJ/out/<函数名>.exe` 断言 `ERRORLEVEL`
+- 每个新特性有没有配套 `TestCode/*.rs` **退出码断言用例**（如 `fn main() -> i32 { 42 }` 运行后 ERRORLEVEL 必须为 42）？
+- `TestCode/` 既有用例（min 期望 0、arith 期望 7、ops 期望 7、flow 期望 55）是否全部不回归？
 
 ### 3.5 版本号
 
@@ -85,7 +85,7 @@ L2+ 全过；L1 只挑相关条目；L0 只留 3.4 与 3.5。**每一条如果�
 |---|---|
 | 已有约定与写法 | 读相邻同类文件 |
 | 分期路线与进度 | `docs/0003-RustJ编译器.md` + `docs/0004-RustJ二期实现.md` |
-| 验收用例与期望退出码 | `Code/examples/` |
+| 验收用例与期望退出码 | `TestCode/` |
 | 编译与验证的正确姿势 | README〈快速开始〉 |
 
 查完仍不确定的，**把查到的事实带进问题**再问：

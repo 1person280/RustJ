@@ -1,6 +1,6 @@
 # 计划 0005 · RustJ 三期计划（真实工程可编译）
 
-> **状态：部分已验证** —— 2c sysroot 接入 + 2d 增量缓存已于 0.2.0 落地（见 [README 版本历史](../README.md)），验证：`sysroot.rs` 退出码断言 44、二次编译缓存命中、七例回归不变；剩余 3a/3b/3c 仍为计划中（草案），动手前经 `plan-interrogation` 逐条确认后落地。
+> **状态：部分已验证** —— 2c sysroot 接入 + 2d 增量缓存已于 0.2.0 落地，3a 结构体已于 0.2.1 落地（均见 [README 版本历史](../README.md)），验证：`sysroot.rs` 退出码断言 44、`struct.rs` 退出码断言 7、八例回归不变；剩余 3b/3c/3d 仍为计划中（草案），动手前经 `plan-interrogation` 逐条确认后落地。
 > **归属版本：不绑定游戏版本号** —— 沿用 [`0003-RustJ编译器.md`](0003-RustJ编译器.md) 定位：RustJ 是随仓库分发的独立工具，
 > 不触碰线格式 → **不触发 `y+1`**、不打 tag、不写 BarekHistory（发布动作按 compliant-delivery 三闸门执行）。
 > **上游设计**：本计划承接 [`0003`](0003-RustJ编译器.md)〈四、分期路线〉的**三期（终靶）**；二期落地见 [`0004-RustJ二期实现.md`](0004-RustJ二期实现.md)。
@@ -35,10 +35,10 @@
 
 | 步 | 内容 | 产出判据（草案） |
 |---|---|---|
-| 3a | **结构体**：`struct` 定义、字段访问、构造、`impl` 块方法（含方法内 `self`） | 新增 `examples/struct.rs` 退出码断言；全部既有用例回归不变 |
-| 3b | **模块系统**：多文件模块、路径解析、`use` 导入、可见性基础 | 新增 `examples/mod.rs` 退出码断言；回归不变 |
-| 3c | **泛型基础**：泛型函数 / 泛型结构体，单态化展开 | 新增 `examples/generic.rs` 退出码断言；回归不变 |
-| 3d | **trait**：trait 定义与实现、静态分发（动态分发 / 对象安全后置） | 新增 `examples/trait.rs` 退出码断言；回归不变 |
+| 3a | **结构体**：`struct` 定义、字段访问、构造、`impl` 块方法（含方法内 `self`） | ✅ 已验证（0.2.1）：`TestCode/struct.rs` 退出码断言 7；八例回归不变 |
+| 3b | **模块系统**：多文件模块、路径解析、`use` 导入、可见性基础 | 新增 `TestCode/mod.rs` 退出码断言；回归不变 |
+| 3c | **泛型基础**：泛型函数 / 泛型结构体，单态化展开 | 新增 `TestCode/generic.rs` 退出码断言；回归不变 |
+| 3d | **trait**：trait 定义与实现、静态分发（动态分发 / 对象安全后置） | 新增 `TestCode/trait.rs` 退出码断言；回归不变 |
 | 3e | **借用检查基础**：所有权 / 借用 / 生命周期基础，未决错误带行号 `rustjerror` | 合法用例可编译、非法用例报带行号错误 |
 | 3f | **sysroot 接入（2c）**：core / alloc / std 的 `.rlib` 随 jar 打包、首次运行解压 | 编译引用 `std` 的用例成功并正确执行 |
 | 3g | **增量缓存（2d）**：缓存键 + 依赖指纹 + working/finalized 会话隔离 | 二次编译命中缓存、产物一致 |
@@ -67,7 +67,7 @@
 ```powershell
 javac -d build -sourcepath Code (Get-ChildItem Code -Recurse -Filter *.java).FullName
 jar cfe RustJ.jar main -C build .
-java -jar RustJ.jar Code/examples/<用例>.rs
+java -jar RustJ.jar TestCode/<用例>.rs
 .\RustJ\out\main.exe; echo "exit=$LASTEXITCODE"
 ```
 
