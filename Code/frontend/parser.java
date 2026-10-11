@@ -1,8 +1,10 @@
 /*
- * 语法分析器（编译单元级入口；3a 并入 struct/impl，3b 并入 mod/use/pub）。
+ * 语法分析器（编译单元级入口；3a 并入 struct/impl，3b 并入 mod/use/pub，3c 并入泛型）。
  * 做什么：循环解析顶层项——`pub` 前缀、`mod` 声明（仅入口文件）、`use 模块名;`（仅入口）、
  *   struct / impl / 函数；函数与结构体名按当前模块 mangle（入口裸名，模块文件 foo__名），
  *   pub 项登记可见性表；函数体委托 stmts；完成后对调用点做延迟校验（calls）。
+ *   3c：`fn foo<T>` 泛型签名由 genparse.typeParam 探测，委托 genparse.parseFn 登记模板
+ *   （返回 null，实例化产物由 frontend.modules 统一并入 fns）。
  * 提供：parser(List<token>) 入口默认；parser(List<token>, structs, Set, String) 多文件共享；
  *   多文件时 defer=true 跳过本文件校验，由 frontend.modules 统一延迟校验。
  */
@@ -39,10 +41,10 @@ public final class parser {
                 fns.addAll(st.parseImpl(cur));
             } else if (cur.peek("mod")) parseMod();
             else if (cur.peek("use")) parseUse();
-            else fns.add(parseFn(pub));
+            else { function f = parseFn(pub); if (f != null) fns.add(f); }
         }
         if (!cur.peek("")) throw new rustjerror(cur.take().line, "期望 \"fn/struct/impl\"");
-        if (!defer) calls.validate(fns);
+        if (!defer) { fns.addAll(st.g.instFns); calls.validate(fns); }
         return new program(defs, fns);
     }
     /* `mod foo;`：仅入口；登记模块名（重复报错），文件内容由 frontend.modules 读取。 */
@@ -61,7 +63,7 @@ public final class parser {
         if (!mods.contains(n.text)) throw new rustjerror(n.line, "未声明的模块: " + n.text);
         cur.expect(";");
     }
-    /* 函数：mangle 后登记名字空间与归属；pub 登记可见性。 */
+    /* 函数：mangle 后登记名字空间与归属；pub 登记可见性；泛型签名委托 genparse。 */
     private function parseFn(boolean pub) {
         cur.expect("fn");
         token nm = cur.next(token.kind.IDENT, "函数名");
@@ -69,6 +71,8 @@ public final class parser {
         st.useName(name, nm.line);
         st.v.note(name, module);
         if (pub) st.v.pubName(name);
+        String tp = genparse.typeParam(cur);
+        if (tp != null) return genparse.parseFn(cur, st.g, name, tp, pub);
         locals syms = new locals();
         List<String> params = parseParams(syms);
         cur.next(token.kind.ARROW, "->");

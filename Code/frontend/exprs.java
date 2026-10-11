@@ -19,7 +19,6 @@ import ast.intlit;
 import ast.op;
 import ast.unop;
 import error.rustjerror;
-
 public final class exprs {
     private final cursor cur;
     private final locals syms;
@@ -69,21 +68,22 @@ public final class exprs {
         token t = cur.take();
         if (t.type == token.kind.INT) return new intlit(Integer.parseInt(t.text));
         if (t.type == token.kind.IDENT) {
-            if (t.text.equals("true")) return new intlit(1);
-            if (t.text.equals("false")) return new intlit(0);
+            if (t.text.equals("true")) return new intlit(1, true);
+            if (t.text.equals("false")) return new intlit(0, true);
             if (cur.peek("::")) {
                 cur.advance();
                 token m = cur.next(token.kind.IDENT, "路径名");
                 String full = t.text + "__" + m.text;
                 st.v.require(full, t.line);
                 token p = new token(token.kind.IDENT, full, t.line);
-                if (cur.peek("(")) return new calls(cur).parseArgs(parent, p);
+                if (cur.peek("(")) return st.g.instCall(new calls(cur).parseArgs(parent, p), syms);
                 if (cur.peek("{")) return new fields(cur, syms, st, parent).lit(p);
                 throw new rustjerror(t.line, "路径后应接调用或构造");
             }
-            if (cur.peek("(")) return new calls(cur).parseArgs(parent, mangleTok(t));
+            if (cur.peek("(")) return st.g.instCall(new calls(cur).parseArgs(parent, mangleTok(t)), syms);
             if (cur.peek("{")) return new fields(cur, syms, st, parent).lit(mangleTok(t));
             if (cur.peek(".")) return new fields(cur, syms, st, parent).access(t);
+            st.g.bareCheck(st.mangle(t.text), t.line);
             return new ident(syms.offsetOf(t.text, t.line));
         }
         throw new rustjerror(t.line, "期望表达式，实际是 \"" + t.text + "\"");

@@ -31,9 +31,12 @@ public final class fields {
         this.parent = parent;
     }
 
-    /* `Point { 字段: 值, ... }`：校验结构体已定义、字段存在且不重复、个数一致。 */
+    /* `Point { 字段: 值, ... }`：校验结构体已定义、字段存在且不重复、个数一致；
+       泛型模板按 T 字段实参推断实例类型并实例化，之后与普通结构体一致。 */
+    /* 结构体字面量：逐字段求值，槽位按声明序对齐；泛型模板走 generics 表、普通结构体走符号表（3c），含 T 字段时先 inferStruct 推断实例类型再 instSt 实例化为 name__T。 */
     expr lit(token ty) {
-        List<String> fs = st.fieldNames(ty.text, ty.line);
+        boolean gen = st.g.isGenSt(ty.text);
+        List<String> fs = gen ? st.g.fieldNames(ty.text, ty.line) : st.fieldNames(ty.text, ty.line);
         cur.expect("{");
         List<String> names = new ArrayList<>();
         List<Integer> indexes = new ArrayList<>();
@@ -45,28 +48,34 @@ public final class fields {
             cur.expect(":");
             args.add(parent.parse());
             names.add(f.text);
-            indexes.add(st.fieldIndex(ty.text, f.text, f.line));
+            indexes.add(gen ? st.g.fieldIndex(ty.text, f.text, f.line)
+                           : st.fieldIndex(ty.text, f.text, f.line));
         }
         cur.expect("}");
         if (names.size() != fs.size())
             throw new rustjerror(ty.line, "结构体 " + ty.text + " 需 " + fs.size() + " 个字段，实际 " + names.size());
+        if (gen) ty = new token(token.kind.IDENT,
+            st.g.instSt(ty.text, st.g.inferStruct(ty.text, names, args, syms, ty.line), ty.line), ty.line);
         return new structlit(ty.text, names, indexes, args, ty.line);
     }
 
     /* `p.x` 字段读取，或 `p.m(...)` 方法调用：args=[字段0..字段N-1, 显式实参...]，
        逆序压栈后栈顶即字段0，正对调用约定 [rbp+16+8×字段序号]；方法体内 self 已
        展开为字段参数（8 字节间隔），`self.f` 直接映射到参数变量 f。 */
+    /* 字段读取/方法调用：p.x 合成基址+序号×4 的单一 disp；p.m(...) 把 self 展开为字段参数（泛型 self 走模板字段表），方法名记为 type__m。 */
     expr access(token obj) {
         cur.advance();
         token f = cur.next(token.kind.IDENT, "字段名");
         String type = syms.typeOf(obj.text, obj.line);
         st.v.require(type, obj.line);
-        if (!st.has(type)) throw new rustjerror(obj.line, "类型 " + type + " 不支持字段/方法");
         boolean slf = obj.text.equals("self");
+        if (!slf && st.g.isGenSt(type)) throw new rustjerror(obj.line, "泛型结构体未实例化: " + type);
+        if (!st.has(type) && !(slf && st.g.isGenSt(type))) throw new rustjerror(obj.line, "类型 " + type + " 不支持字段/方法");
+        List<String> fs = slf && st.g.isGenSt(type) ? st.g.fieldNames(type, obj.line) : st.fieldNames(type, obj.line);
         if (cur.peek("(")) {
             List<expr> args = new ArrayList<>();
-            for (int i = 0; i < st.fieldCount(type, obj.line); i++)
-                args.add(slf ? new ident(syms.offsetOf(st.fieldNames(type, obj.line).get(i), obj.line))
+            for (int i = 0; i < fs.size(); i++)
+                args.add(slf ? new ident(syms.offsetOf(fs.get(i), obj.line))
                              : new field(syms.offsetOf(obj.text, obj.line) + i * 4, obj.line));
             cur.advance();
             boolean first = true;
