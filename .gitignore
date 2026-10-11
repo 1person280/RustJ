@@ -1,6 +1,8 @@
 # 编译产物
 /RustJ.jar
 /RustJ/
+/Code/RustJ.jar
+/Code/RustJ/
 /build/
 *.class
 /.vscode/
