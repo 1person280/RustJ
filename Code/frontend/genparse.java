@@ -66,13 +66,15 @@ public final class genparse {
         if (tp != null && fts.contains(tp)) g.addSt(base, tp, fs, fts, pub);
         return new structdef(base, fs, line);
     }
-    /* 方法模板：self 展开为字段参数，显式 i32 参数跟后；模板不占符号，pub 跟随结构体。 */
-    public static function parseMethod(cursor cur, generics g, String type, List<String> fs, boolean pub, boolean templ) {
+    /* 方法模板：self 展开为字段参数，显式 i32 参数跟后；模板不占符号，pub 跟随结构体。
+     * reg=false 用于 trait 实现方法：trait 方法符号不进入顶层名字空间（多 trait 可共存
+     * 同名方法，冲突由 traits.bind 在调用点按「方法名不明确」报错），故跳过 useName 登记。 */
+    public static function parseMethod(cursor cur, generics g, String type, List<String> fs, boolean pub, boolean templ, boolean reg) {
         cur.expect("fn");
         token m = cur.next(token.kind.IDENT, "方法名");
         String sym = type + "__" + m.text;
-        if (!templ) { g.st.useName(sym, m.line); g.st.v.note(sym, g.st.v.cur); if (pub) g.st.v.pubName(sym); }
-        cur.expect("("); cur.expect("&"); cur.expect("self");
+        if (!templ && reg) { g.st.useName(sym, m.line); g.st.v.note(sym, g.st.v.cur); if (pub) g.st.v.pubName(sym); }
+        cur.expect("("); if (cur.peek("&")) cur.advance(); cur.expect("self");
         locals syms = new locals();
         syms.declareSelf(type);
         List<String> params = new ArrayList<>();

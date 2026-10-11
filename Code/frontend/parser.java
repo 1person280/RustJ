@@ -1,15 +1,11 @@
-/*
- * 语法分析器（编译单元级入口；3a 并入 struct/impl，3b 并入 mod/use/pub，3c 并入泛型）。
- * 做什么：循环解析顶层项——`pub` 前缀、`mod` 声明（仅入口文件）、`use 模块名;`（仅入口）、
- *   struct / impl / 函数；函数与结构体名按当前模块 mangle（入口裸名，模块文件 foo__名），
- *   pub 项登记可见性表；函数体委托 stmts；完成后对调用点做延迟校验（calls）。
- *   3c：`fn foo<T>` 泛型签名由 genparse.typeParam 探测，委托 genparse.parseFn 登记模板
- *   （返回 null，实例化产物由 frontend.modules 统一并入 fns）。
- * 提供：parser(List<token>) 入口默认；parser(List<token>, structs, Set, String) 多文件共享；
- *   多文件时 defer=true 跳过本文件校验，由 frontend.modules 统一延迟校验。
- */
+/* 语法分析器（编译单元级入口；3a~3c 并入 struct/impl/mod/use/pub/泛型，3d 并入 trait）。
+ * 做什么：循环解析顶层项——`pub` 前缀、`mod`/`use`（仅入口）、struct/impl/trait/函数；
+ *   函数与结构体名按当前模块 mangle（入口裸名，模块文件 foo__名），pub 项登记可见性；
+ *   函数体委托 stmts；calls 延迟校验；泛型签名委托 genparse，trait 登记在 structs.traits。
+ * 提供：parser(List<token>) 默认；parser(List<token>, structs, Set, String) 多文件共享；
+ *   多文件 defer=true 跳过本文件校验，由 frontend.modules 统一延迟校验。 */
 package frontend;
-import ast.block; import ast.function; import ast.program; import ast.structdef;
+import ast.block; import ast.function; import ast.program; import ast.structdef; import ast.traitdef;
 import error.rustjerror;
 import java.util.ArrayList; import java.util.HashSet; import java.util.List; import java.util.Set;
 
@@ -31,21 +27,23 @@ public final class parser {
     }
     public program parse() {
         List<structdef> defs = new ArrayList<>();
+        List<traitdef> tdefs = new ArrayList<>();
         List<function> fns = new ArrayList<>();
         while (cur.isIdent()) {
             boolean pub = false;
             if (cur.peek("pub")) { cur.advance(); pub = true; }
             if (cur.peek("struct")) defs.add(st.parseStruct(cur, pub));
+            else if (cur.peek("trait")) tdefs.add(st.t.parseTrait(cur, pub));
             else if (cur.peek("impl")) {
-                if (pub) throw new rustjerror(cur.peekTok().line, "pub 只能修饰 fn/struct");
+                if (pub) throw new rustjerror(cur.peekTok().line, "pub 不能修饰 impl");
                 fns.addAll(st.parseImpl(cur));
             } else if (cur.peek("mod")) parseMod();
             else if (cur.peek("use")) parseUse();
             else { function f = parseFn(pub); if (f != null) fns.add(f); }
         }
-        if (!cur.peek("")) throw new rustjerror(cur.take().line, "期望 \"fn/struct/impl\"");
+        if (!cur.peek("")) throw new rustjerror(cur.take().line, "期望 \"fn/struct/impl/trait\"");
         if (!defer) { fns.addAll(st.g.instFns); calls.validate(fns); }
-        return new program(defs, fns);
+        return new program(defs, fns, tdefs);
     }
     /* `mod foo;`：仅入口；登记模块名（重复报错），文件内容由 frontend.modules 读取。 */
     private void parseMod() {

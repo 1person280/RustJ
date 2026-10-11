@@ -1,5 +1,5 @@
 /*
- * 结构体构造与字段/方法解析（3a）。
+ * 结构体构造与字段/方法解析（3a + 3d trait 静态分发绑定）。
  *
  * 做什么：承接 exprs.atom 下放的三个形态：`Point { ... }` 结构体字面量（逐字段
  *   值表达式，槽位按声明序号对齐）、`p.x` 字段读取（变量基址 + 序号×4 合成单一
@@ -85,7 +85,7 @@ public final class fields {
                 args.add(parent.parse());
             }
             cur.expect(")");
-            return new call(type + "__" + f.text, args, obj.line);
+            return new call(st.t.bind(type, f.text, obj.line), args, obj.line);
         }
         if (slf) return new ident(syms.offsetOf(f.text, f.line));
         return new field(syms.offsetOf(obj.text, obj.line) + st.fieldIndex(type, f.text, f.line) * 4, obj.line);

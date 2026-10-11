@@ -6,7 +6,7 @@
  * 提供：modList / depBytes / concat / parseAll。
  */
 package frontend;
-import ast.function; import ast.program; import ast.structdef;
+import ast.function; import ast.program; import ast.structdef; import ast.traitdef;
 import error.rustjerror;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -65,18 +65,21 @@ public final class modules {
     public static program parseAll(Path dir, String code, List<String> mods, List<byte[]> deps) {
         structs st = new structs();
         List<structdef> defs = new ArrayList<>();
+        List<traitdef> tdefs = new ArrayList<>();
         List<function> fns = new ArrayList<>();
         for (int i = 0; i < mods.size(); i++) {
             String src = new String(deps.get(i), StandardCharsets.UTF_8);
             program pm = new parser(new lexer(src).tokenize(), st, new HashSet<>(), mods.get(i), true).parse();
             defs.addAll(pm.defs);
+            tdefs.addAll(pm.tdefs);
             fns.addAll(pm.fns);
         }
         program p0 = new parser(new lexer(code).tokenize(), st, new HashSet<>(), "", true).parse();
         defs.addAll(p0.defs);
+        tdefs.addAll(p0.tdefs);
         fns.addAll(p0.fns);
         fns.addAll(st.g.instFns);
         calls.validate(fns);
-        return new program(defs, fns);
+        return new program(defs, fns, tdefs);
     }
 }
