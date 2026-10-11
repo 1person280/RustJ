@@ -10,6 +10,7 @@
  *   - parse(locals syms)：解析一个块，返回 ast.block（语句列表 + 可选尾表达式）。
  *   - parseBlock(locals syms, int depth)：解析嵌套块；depth 为外层循环嵌套层数，
  *     供控制流语句判断 break/continue 是否处于循环内。
+ * 3e：let/赋值节点携带变量名与行号（base），供 frontend.borrows 借用检查报错定位。
  */
 package frontend;
 
@@ -17,6 +18,7 @@ import ast.assignstmt;
 import ast.block;
 import ast.expr;
 import ast.fieldassignstmt;
+import ast.ident;
 import ast.letstmt;
 import ast.stmt;
 import ast.structlit;
@@ -64,8 +66,13 @@ public final class stmts {
         expr init = ex.parse();
         if (cur.peek(";")) cur.advance();
         if (init instanceof structlit g)
-            return new letstmt(syms.declare(nm.text, g.typeName, st.fieldCount(g.typeName, nm.line), nm.line), init);
-        return new letstmt(syms.declare(nm.text, nm.line), init);
+            return new letstmt(nm.text, syms.declare(nm.text, g.typeName, st.fieldCount(g.typeName, nm.line), nm.line), init, nm.line, st.fieldCount(g.typeName, nm.line));
+        if (init instanceof ident iv) {
+            String ty = syms.typeOfOffset(iv.offset, iv.line);
+            if (!ty.equals("i32"))
+                return new letstmt(nm.text, syms.declare(nm.text, ty, st.fieldCount(ty, nm.line), nm.line), init, nm.line, st.fieldCount(ty, nm.line));
+        }
+        return new letstmt(nm.text, syms.declare(nm.text, nm.line), init, nm.line, 1);
     }
 
     /* 赋值：普通变量写槽；`p.x = v` 按变量基址 + 字段序号×4 合成 disp 写字段槽。 */
@@ -79,12 +86,14 @@ public final class stmts {
             cur.expect("=");
             expr value = ex.parse();
             if (cur.peek(";")) cur.advance();
-            return new fieldassignstmt(disp, value);
+            return new fieldassignstmt(nm.text, offset, disp, value, nm.line);
         }
         cur.expect("=");
         expr value = ex.parse();
         if (cur.peek(";")) cur.advance();
-        return new assignstmt(offset, value);
+        String t = syms.typeOf(nm.text, nm.line);
+        int slots = t.equals("i32") ? 1 : st.fieldCount(t, nm.line);
+        return new assignstmt(nm.text, offset, value, nm.line, slots);
     }
 
 }

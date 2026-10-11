@@ -22,6 +22,7 @@ public final class locals {
         count++;
         int offset = -4 * count;
         offsets.put(name, offset);
+        types.put(name, "i32");
         offTypes.put(offset, "i32");
         return offset;
     }
@@ -30,6 +31,7 @@ public final class locals {
         if (offsets.containsKey(name)) throw new rustjerror(line, "变量重复声明: " + name);
         int offset = 16 + 8 * index;
         offsets.put(name, offset);
+        types.put(name, "i32");
         offTypes.put(offset, "i32");
         return offset;
     }

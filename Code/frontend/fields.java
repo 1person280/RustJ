@@ -75,8 +75,8 @@ public final class fields {
         if (cur.peek("(")) {
             List<expr> args = new ArrayList<>();
             for (int i = 0; i < fs.size(); i++)
-                args.add(slf ? new ident(syms.offsetOf(fs.get(i), obj.line))
-                             : new field(syms.offsetOf(obj.text, obj.line) + i * 4, obj.line));
+                args.add(slf ? new ident(syms.offsetOf(fs.get(i), obj.line), obj.line)
+                             : new field(syms.offsetOf(obj.text, obj.line), syms.offsetOf(obj.text, obj.line) + i * 4, obj.line));
             cur.advance();
             boolean first = true;
             while (!cur.peek(")")) {
@@ -87,7 +87,7 @@ public final class fields {
             cur.expect(")");
             return new call(st.t.bind(type, f.text, obj.line), args, obj.line);
         }
-        if (slf) return new ident(syms.offsetOf(f.text, f.line));
-        return new field(syms.offsetOf(obj.text, obj.line) + st.fieldIndex(type, f.text, f.line) * 4, obj.line);
+        if (slf) return new ident(syms.offsetOf(f.text, f.line), f.line);
+        return new field(syms.offsetOf(obj.text, obj.line), syms.offsetOf(obj.text, obj.line) + st.fieldIndex(type, f.text, f.line) * 4, obj.line);
     }
 }

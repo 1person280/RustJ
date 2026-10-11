@@ -14,6 +14,7 @@ import ast.breakstmt;
 import ast.continuestmt;
 import ast.fieldassignstmt;
 import ast.forstmt;
+import ast.ident;
 import ast.ifstmt;
 import ast.letstmt;
 import ast.returnstmt;
@@ -29,7 +30,11 @@ public final class blockgen {
     }
     private static void emitStmt(stmt s, arch out, int end, Map<String, Integer> targets, int brk, int cont) {
         if (s instanceof letstmt l) emitLet(l, out, targets);
-        else if (s instanceof assignstmt a) { eval.emit(a.value, out, targets); out.storeEax(a.offset); }
+        else if (s instanceof assignstmt a) {
+            if (a.slots > 1 && a.value instanceof ident av) {
+                for (int i = 0; i < a.slots; i++) { out.loadEax(av.offset + i * 4); out.storeEax(a.offset + i * 4); }
+            } else { eval.emit(a.value, out, targets); out.storeEax(a.offset); }
+        }
         else if (s instanceof fieldassignstmt fa) { eval.emit(fa.value, out, targets); out.storeEax(fa.disp); }
         else if (s instanceof returnstmt r) { if (r.value != null) eval.emit(r.value, out, targets); out.jump(end); }
         else if (s instanceof ifstmt i) emitIf(i, out, end, targets, brk, cont);
@@ -38,13 +43,15 @@ public final class blockgen {
         else if (s instanceof breakstmt) out.jump(brk);
         else if (s instanceof continuestmt) out.jump(cont);
     }
-    /* let：init 为结构体构造则逐字段写入 [基址+序号×4]，否则整体求值写单槽。 */
+    /* let：init 为结构体构造则逐字段写入 [基址+序号×4]；init 为结构体 ident 时整段 move 拷贝；否则整体求值写单槽。 */
     private static void emitLet(letstmt l, arch out, Map<String, Integer> targets) {
         if (l.init instanceof structlit g) {
             for (int i = 0; i < g.args.size(); i++) {
                 eval.emit(g.args.get(i), out, targets);
                 out.storeEax(l.offset + g.indexes.get(i) * 4);
             }
+        } else if (l.init instanceof ident iv && l.slots > 1) {
+            for (int i = 0; i < l.slots; i++) { out.loadEax(iv.offset + i * 4); out.storeEax(l.offset + i * 4); }
         } else { eval.emit(l.init, out, targets); out.storeEax(l.offset); }
     }
     /* if：条件为真走 then，为假走 else（缺省跳过）；两路汇合于 done；循环上下文透传。 */

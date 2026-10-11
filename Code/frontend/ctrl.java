@@ -65,7 +65,7 @@ public final class ctrl {
         cur.expect("..");
         expr hi = ex.parse();
         int offset = syms.declare(nm.text, nm.line);
-        return new forstmt(offset, lo, hi, st.parseBlock(syms, depth + 1));
+        return new forstmt(nm.text, offset, lo, hi, st.parseBlock(syms, depth + 1), nm.line);
     }
 
     private returnstmt parseReturn(logic ex) {

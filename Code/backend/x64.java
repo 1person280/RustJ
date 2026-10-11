@@ -34,6 +34,12 @@ public final class x64 implements arch {
     public void loadEax(int disp) { buf.put(0x8B, 0x85); buf.putInt(disp); }
     public void storeEax(int disp) { buf.put(0x89, 0x85); buf.putInt(disp); }
 
+    /* 引用取址：lea eax, [rbp+disp]——`&x`/`&mut x` 把栈槽地址装入 EAX（3e）。 */
+    public void leaEax(int disp) { buf.put(0x8D, 0x85); buf.putInt(disp); }
+
+    /* 间接读：mov eax, [eax]——`*r` 按 EAX 中地址取值（3e）。 */
+    public void loadEaxInd() { buf.put(0x8B, 0x00); }
+
     public void pushEax() { buf.put(0x50); }
     public void popEcx() { buf.put(0x59); }
     public void popEax() { buf.put(0x58); }

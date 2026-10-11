@@ -14,6 +14,7 @@ import backend.coff;
 import backend.lld;
 import backend.rtlib;
 import backend.x64;
+import frontend.borrows;
 import frontend.lexer;
 import frontend.modules;
 import frontend.parser;
@@ -59,6 +60,7 @@ public class main {
             return;
         }
         program pr = modules.parseAll(src.getParent(), code, mods, depList);
+        frontend.borrows.check(pr.fns);   // 3e 借用检查：AST 构建后、codegen 前
         codebuffer.clearExterns();
         x64 out = new x64();
         int mainOff = codegen.emit(pr.fns, out);

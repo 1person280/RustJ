@@ -4,6 +4,7 @@
  * 做什么：把「栈机式求值 + 控制流」所需的最小指令集合抽象成接口，使代码生成
  *   （backend.codegen / backend.eval）与具体硬件架构解耦。
  * 提供什么功能：栈帧建立/拆除、常量与变量槽读写、栈机 push/pop、算术、比较、
+ *   引用取址（leaEax：&x 取栈槽地址）与间接读（loadEaxInd：*r 按 EAX 地址取值）、
  *   标号与相对跳转、逻辑短路（test/jnz），以及返回 .text 字节流。
  * 为什么：新增架构（如 arm64）只需再实现本接口一个类，AST 与代码生成均无需改动。
  */
@@ -16,6 +17,9 @@ public interface arch {
     void movEaxImm(int value);
     void loadEax(int disp);
     void storeEax(int disp);
+
+    void leaEax(int disp);
+    void loadEaxInd();
 
     void pushEax();
     void popEcx();

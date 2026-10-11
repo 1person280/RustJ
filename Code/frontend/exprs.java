@@ -1,11 +1,13 @@
 /*
- * 表达式子解析器（优先级分层，3b 并入模块路径）。
+ * 表达式子解析器（优先级分层，3b 并入模块路径，3e 并入引用语法）。
  *
  * 做什么：按优先级自低到高递归下降解析算术层（add → mul → unary → atom）；
  *   布尔层（|| && 与比较）由 frontend.logic 负责。独立成类守住
  *   「单文件 < 100 行」上限，也让「逻辑层」与「算术层」职责分明。
  *   3b：atom 识别 `foo::bar(...)` 路径调用与 `foo::Point { .. }` 路径构造
  *   （符号 mangle 为 foo__bar），裸名调用/构造按当前模块 mangle 并做可见性校验。
+ *   3e：unary 层识别 `&expr` / `&mut expr` / `*expr` 产出 borrow/deref 节点；
+ *   `&mut` 由 parser 层识别 `&` 后紧跟标识符 mut 判定，`*` 与乘法按一元/二元上下文区分。
  * 提供什么功能：
  *   - add()：算术加减层，供 logic.compare 委托调用。
  *   - atom()：字面量 / 标识符 / 调用 / 构造 / 路径 / 括号。
@@ -13,6 +15,8 @@
 package frontend;
 
 import ast.binop;
+import ast.borrow;
+import ast.deref;
 import ast.expr;
 import ast.ident;
 import ast.intlit;
@@ -42,6 +46,7 @@ public final class exprs {
         return left;
     }
 
+    /* 乘法层：二元 `*` 在左操作数之后出现，与一元 deref（unary 内处理）按上下文区分。 */
     private expr mul() {
         expr left = unary();
         while (cur.peek("*") || cur.peek("/") || cur.peek("%")) {
@@ -52,9 +57,17 @@ public final class exprs {
         return left;
     }
 
+    /* 一元层：`-x` / `!x` / `&x`（只读借用）/ `&mut x`（可变借用）/ `*x`（解引用）。 */
     private expr unary() {
         if (cur.peek("-")) { cur.advance(); return new unop(op.NEG, unary()); }
         if (cur.peek("!")) { cur.advance(); return new unop(op.NOT, unary()); }
+        if (cur.peek("&")) {
+            token a = cur.take();
+            boolean mut = false;
+            if (cur.isIdent() && cur.peekTok().text.equals("mut")) { cur.advance(); mut = true; }
+            return new borrow(mut, unary(), a.line);
+        }
+        if (cur.peek("*")) { token s = cur.take(); return new deref(unary(), s.line); }
         return atom();
     }
 
@@ -84,7 +97,7 @@ public final class exprs {
             if (cur.peek("{")) return new fields(cur, syms, st, parent).lit(mangleTok(t));
             if (cur.peek(".")) return new fields(cur, syms, st, parent).access(t);
             st.g.bareCheck(st.mangle(t.text), t.line);
-            return new ident(syms.offsetOf(t.text, t.line));
+            return new ident(syms.offsetOf(t.text, t.line), t.line);
         }
         throw new rustjerror(t.line, "期望表达式，实际是 \"" + t.text + "\"");
     }

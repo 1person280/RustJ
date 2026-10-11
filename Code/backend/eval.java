@@ -11,7 +11,9 @@
 package backend;
 
 import ast.binop;
+import ast.borrow;
 import ast.call;
+import ast.deref;
 import ast.expr;
 import ast.field;
 import ast.ident;
@@ -33,7 +35,16 @@ public final class eval {
             return;
         }
         if (e instanceof call c) { emitCall(c, out, targets); return; }
+        if (e instanceof borrow b) { emitBorrow(b, out, targets); return; }
+        if (e instanceof deref d) { emit(d.operand, out, targets); out.loadEaxInd(); return; }
         emitBinary((binop) e, out, targets);
+    }
+
+    /* 引用取址：`&x`/`&mut x` 取变量栈槽地址（field 取合成字段偏移），borrows 已保证 operand 是变量或字段。 */
+    private static void emitBorrow(borrow b, arch out, Map<String, Integer> targets) {
+        if (b.operand instanceof ident v) { out.leaEax(v.offset); return; }
+        if (b.operand instanceof field f) { out.leaEax(f.disp); return; }
+        throw new IllegalArgumentException("借用仅支持变量或字段");
     }
 
     /* 调用：实参逆序压栈（push/call 均为 8 字节宽，第 i 个参数在被调方 [rbp+16+8i] 可见），
