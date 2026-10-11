@@ -19,13 +19,13 @@ description: RustJ 合规交付技能——把改动按「三闸门」合规地�
 
 | 红线 | 判据 | 检查方式 |
 |---|---|---|
-| **洁癖** | 单文件 ≤ 99 行（≤99，含注释）；**一 class 一文件、类与文件名统一小写**；禁循环依赖 | 逐文件核对 + `git diff --stat` |
+| **洁癖** | 单文件不设行数上限，但不得是**上帝文件**（单一职责、可读可拆）；**一 class 一文件、类与文件名统一小写**；禁循环依赖；注释完整（类头 Why 型 + 每方法说明） | 逐文件核对 + `git diff --stat` |
 | **架构** | 依赖方向 `frontend → ast`、`backend → ast` 互不引用；`error` 单向供前后端依赖；AST 保持纯数据；后端面向 `arch` 接口 | 搜 `import` 核对依赖图 |
 | **产物** | 碰 COFF / PE 格式或 `main.java` 入口属**不兼容变更**，README 快速开始与版本号必须同步；产物只写 `RustJ/out/`（已 gitignore） | 对照 README〈快速开始〉 |
 | **文档** | 碰语言子集 / 分期进度 → 同步 `docs/0004-RustJ二期实现.md`；碰架构分层 → 同步 `docs/0003-RustJ编译器.md`；README 结构表随动 | 逐处核对 |
 | **测试** | `javac -d build -sourcepath Code Code\main.java` 退出码 0 + `TestCode/` 全部用例退出码断言通过（min=0 / arith=7 / ops=7 / flow=55）；新特性必配新 `.rs` 用例 | 运行 `RustJ/out/<函数名>.exe` 后查 `ERRORLEVEL` |
 
-Java 硬规范：异常统一走 `error/rustjerror`；标号回填只归 `codebuffer`；禁止为省行数把多个 class 塞进一个文件。
+Java 硬规范：异常统一走 `error/rustjerror`；标号回填只归 `codebuffer`；**不设行数上限**，但禁止把多个 class 塞进一个文件、禁止为省行数删注释——类头 Why 型注释 + 每方法说明必须完整，让下一任读懂运行机制。
 
 ### 1.2 提交信息规范
 
