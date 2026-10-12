@@ -4,5 +4,8 @@
 /Code/RustJ.jar
 /Code/RustJ/
 /build/
+/out/
+/sysroot/
+/temp/
 *.class
 /.vscode/

@@ -17,6 +17,7 @@ package frontend;
 import ast.assignstmt;
 import ast.block;
 import ast.expr;
+import ast.exprstmt;
 import ast.fieldassignstmt;
 import ast.ident;
 import ast.letstmt;
@@ -51,12 +52,23 @@ public final class stmts {
                     || cur.peek("return") || cur.peek("break") || cur.peek("continue"))
                 list.add(ctl.parse(syms, ex, this, depth));
             else if (cur.isIdent() && cur.ahead(1).equals("=")) list.add(parseAssign(syms, ex));
+            else if (cur.isIdent() && cur.ahead(1).equals("::")
+                    && (cur.peekTok().text.equals("std") || (st.stdShort != null && cur.peekTok().text.equals(st.stdShort))))
+                list.add(parseStdStmt(syms, ex));
             else break;
         }
         expr tail = cur.peek("}") ? null : ex.parse();
         if (cur.peek(";")) cur.advance();
         cur.expect("}");
         return new block(list, tail);
+    }
+
+    /* std 表达式语句（如 std::mem::swap(&mut a, &mut b);）：解析内置操作表达式，结果丢弃。 */
+    private stmt parseStdStmt(locals syms, logic ex) {
+        token t = cur.take();
+        expr e = stdlib.build(cur, ex, syms, st, t.text.equals("std") ? "std" : st.stdShort, t.line);
+        if (cur.peek(";")) cur.advance();
+        return new exprstmt(e, t.line);
     }
 
     private letstmt parseLet(locals syms, logic ex) {

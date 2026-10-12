@@ -83,6 +83,8 @@ public final class exprs {
         if (t.type == token.kind.IDENT) {
             if (t.text.equals("true")) return new intlit(1, true);
             if (t.text.equals("false")) return new intlit(0, true);
+            if (cur.peek("::") && (t.text.equals("std") || (st.stdShort != null && t.text.equals(st.stdShort))))
+                return stdlib.build(cur, parent, syms, st, t.text.equals("std") ? "std" : st.stdShort, t.line);
             if (cur.peek("::")) {
                 cur.advance();
                 token m = cur.next(token.kind.IDENT, "路径名");

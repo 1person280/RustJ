@@ -53,11 +53,20 @@ public final class parser {
         if (!mods.add(n.text)) throw new rustjerror(n.line, "重复的 mod 声明: " + n.text);
         cur.expect(";");
     }
-    /* `use foo;`：仅入口；校验模块已声明（use 只引模块名，可省）。 */
+    /* `use foo;` / `use std::mem;`：仅入口；普通 use 校验模块已声明，std use 登记短名。 */
     private void parseUse() {
         if (!module.isEmpty()) throw new rustjerror(cur.peekTok().line, "模块文件内不允许 use");
         cur.expect("use");
         token n = cur.next(token.kind.IDENT, "模块名");
+        if (n.text.equals("std")) {
+            cur.expect("::");
+            token m = cur.next(token.kind.IDENT, "std 模块名");
+            if (st.stdShort != null && !st.stdShort.equals(m.text))
+                throw new rustjerror(m.line, "重复的 std use 别名: " + m.text);
+            st.stdShort = m.text;
+            cur.expect(";");
+            return;
+        }
         if (!mods.contains(n.text)) throw new rustjerror(n.line, "未声明的模块: " + n.text);
         cur.expect(";");
     }

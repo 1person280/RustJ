@@ -17,6 +17,8 @@ public final class structs {
     private final Set<String> used = new HashSet<>();
     /* 类型(mangle 后) → 固有方法名集合；普通 impl 登记，供 traits.bind 固有优先。 */
     private final Map<String, Set<String>> own = new HashMap<>();
+    /* 3f：`use std::mem;` 登记的短名（mem），exprs 将 mem::xxx 视为 std::mem::xxx。 */
+    public String stdShort;
     /* 模块前缀：入口 "" 或系统 rjt_* 符号不加前缀，模块文件 foo__。 */
     public String mangle(String n) { return v.cur.isEmpty() || n.startsWith("rjt_") ? n : v.cur + "__" + n; }
     public void useName(String name, int line) { if (!used.add(name)) throw new rustjerror(line, "名字重复定义: " + name); }

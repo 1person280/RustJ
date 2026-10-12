@@ -56,6 +56,15 @@ public final class codebuffer {
         put(0x0F, 0x85);
         patch(label);
     }
+    /* 比较后条件跳转（不附带 test）：jg 有符号大于 / jl 有符号小于，供 max/min 选择。 */
+    void branchIfGreater(int label) {
+        put(0x0F, 0x8F);
+        patch(label);
+    }
+    void branchIfLess(int label) {
+        put(0x0F, 0x8C);
+        patch(label);
+    }
     byte[] bytes() {
         for (int[] p : patches) {
             writeIntAt(p[1], labelPos.get(p[0]) - (p[1] + 4));

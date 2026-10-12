@@ -34,17 +34,25 @@ public final class x64 implements arch {
     public void loadEax(int disp) { buf.put(0x8B, 0x85); buf.putInt(disp); }
     public void storeEax(int disp) { buf.put(0x89, 0x85); buf.putInt(disp); }
 
-    /* 引用取址：lea eax, [rbp+disp]——`&x`/`&mut x` 把栈槽地址装入 EAX（3e）。 */
-    public void leaEax(int disp) { buf.put(0x8D, 0x85); buf.putInt(disp); }
+    /* 引用取址：lea rax, [rbp+disp]——`&x`/`&mut x` 把栈槽地址装入 RAX（3e）。
+       必须 64 位目标（REX.W 0x48）：写 32 位 EAX 会清零高 32 位，间接读写将访问低 4G 错地址。 */
+    public void leaEax(int disp) { buf.put(0x48, 0x8D, 0x85); buf.putInt(disp); }
 
     /* 间接读：mov eax, [eax]——`*r` 按 EAX 中地址取值（3e）。 */
     public void loadEaxInd() { buf.put(0x8B, 0x00); }
+
+    /* 间接写：mov [eax], ecx——按 EAX 中地址写入 ECX 值（3f swap 写回）。 */
+    public void storeEaxInd() { buf.put(0x89, 0x08); }
 
     public void pushEax() { buf.put(0x50); }
     public void popEcx() { buf.put(0x59); }
     public void popEax() { buf.put(0x58); }
     public void movEcxEax() { buf.put(0x89, 0xC1); }
+    public void movEaxEcx() { buf.put(0x8B, 0xC1); }
     public void movEaxEdx() { buf.put(0x89, 0xD0); }
+    /* 暂存：mov edx, eax——swap 中把 a 旧值从 EAX 存进 EDX（注意与 movEaxEdx 方向相反）。 */
+    public void movEdxEax() { buf.put(0x89, 0xC2); }
+    public void movEcxEdx() { buf.put(0x89, 0xD1); }
 
     public void addEaxEcx() { buf.put(0x03, 0xC1); }
     public void subEaxEcx() { buf.put(0x2B, 0xC1); }
@@ -69,6 +77,8 @@ public final class x64 implements arch {
     public void branchIfZero(int label) { buf.branchIfZero(label); }
     public void testEaxEax() { buf.put(0x85, 0xC0); }
     public void branchIfNonZero(int label) { buf.branchIfNonZero(label); }
+    public void branchIfGreater(int label) { buf.branchIfGreater(label); }
+    public void branchIfLess(int label) { buf.branchIfLess(label); }
     public void call(int label) { buf.call(label); }
 
     /* 清理调用方压栈的实参（n 为参数个数，push 为 8 字节宽）；n 为 0 时不发指令。 */

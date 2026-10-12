@@ -122,6 +122,8 @@ public final class borrows {
             walkAExpr(f.lo);
             walkAExpr(f.hi);
             walkA(f.body);
+        } else if (s instanceof ast.exprstmt es) {
+            walkAExpr(es.e);
         }
     }
 
@@ -144,6 +146,8 @@ public final class borrows {
             walkAExpr(u.operand);
         } else if (e instanceof structlit g) {
             for (expr a : g.args) walkAExpr(a);
+        } else if (e instanceof ast.swapnode sw) {
+            /* 3f swap：两个 &mut 借用仅瞬时存在，不登记活跃区间，改由 swapCheck 专用检查。 */
         }
     }
 
@@ -223,6 +227,8 @@ public final class borrows {
             walkBExpr(f.hi, vars);
             vars.put(f.offset, new bvar(f.name, false));
             walkB(f.body, vars);
+        } else if (s instanceof ast.exprstmt es) {
+            walkBExpr(es.e, vars);
         }
     }
 
@@ -260,6 +266,9 @@ public final class borrows {
             walkBExpr(u.operand, vars);
         } else if (e instanceof structlit g) {
             for (expr a : g.args) walkBExpr(a, vars);
+        } else if (e instanceof ast.swapnode sw) {
+            walkBExpr(sw.a, vars);
+            walkBExpr(sw.b, vars);
         } else if (e instanceof field f) {
             readVar(f.base, f.line, vars);
         } else if (e instanceof ident v) {
@@ -301,6 +310,26 @@ public final class borrows {
         } else if (activeMut(target)) {
             throw new rustjerror(b.line, "借用冲突: 只读借用与可变借用冲突");
         }
+    }
+
+    /* swap 专用检查：两目标相同（交叉同变量）报借用冲突；各自不得 moved、不得存在活跃借用。 */
+    private void swapCheck(ast.swapnode sw, Map<Integer, bvar> vars) {
+        int ta = sw.a.operand instanceof ident v1 ? v1.offset : ((field) sw.a.operand).base;
+        int tb = sw.b.operand instanceof ident v2 ? v2.offset : ((field) sw.b.operand).base;
+        if (ta == tb) {
+            bvar bv = vars.get(ta);
+            throw new rustjerror(sw.line, "借用冲突: 变量 " + (bv != null ? bv.name : "未知") + " 不能同时被 swap 交换");
+        }
+        swapArgCheck(sw.a, ta, vars);
+        swapArgCheck(sw.b, tb, vars);
+    }
+
+    /* swap 单个实参：moved 报 use-after-move；已有活跃借用（非本 swap）报借用冲突。 */
+    private void swapArgCheck(borrow b, int target, Map<Integer, bvar> vars) {
+        bvar v = vars.get(target);
+        if (v == null) return;
+        if (v.moved) throw new rustjerror(b.line, "use-after-move: " + v.name + " 已被移动");
+        if (activeAny(target)) throw new rustjerror(b.line, "借用冲突: 变量 " + v.name + " 存在活跃借用，不能交换");
     }
 
     /* 是否存在覆盖当前语句的可变借用 / 任一借用。 */

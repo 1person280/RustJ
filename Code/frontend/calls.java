@@ -71,6 +71,7 @@ public final class calls {
         else if (s instanceof ifstmt i) { checkExpr(i.cond, arity); checkBlock(i.then, arity); if (i.els != null) checkBlock(i.els, arity); }
         else if (s instanceof whilestmt w) { checkExpr(w.cond, arity); checkBlock(w.body, arity); }
         else if (s instanceof forstmt f) { checkExpr(f.lo, arity); checkExpr(f.hi, arity); checkBlock(f.body, arity); }
+        else if (s instanceof ast.exprstmt es) checkExpr(es.e, arity);
     }
 
     private static void checkExpr(expr e, Map<String, Integer> arity) {
@@ -84,5 +85,6 @@ public final class calls {
         }
         if (e instanceof ast.binop b) { checkExpr(b.left, arity); checkExpr(b.right, arity); }
         else if (e instanceof ast.unop u) checkExpr(u.operand, arity);
+        else if (e instanceof ast.stdnode sn) { for (expr a : sn.args) checkExpr(a, arity); }
     }
 }

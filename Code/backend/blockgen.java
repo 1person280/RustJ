@@ -42,6 +42,7 @@ public final class blockgen {
         else if (s instanceof forstmt f) emitFor(f, out, end, targets, brk, cont);
         else if (s instanceof breakstmt) out.jump(brk);
         else if (s instanceof continuestmt) out.jump(cont);
+        else if (s instanceof ast.exprstmt es) eval.emit(es.e, out, targets);
     }
     /* let：init 为结构体构造则逐字段写入 [基址+序号×4]；init 为结构体 ident 时整段 move 拷贝；否则整体求值写单槽。 */
     private static void emitLet(letstmt l, arch out, Map<String, Integer> targets) {

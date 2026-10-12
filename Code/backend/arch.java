@@ -20,12 +20,16 @@ public interface arch {
 
     void leaEax(int disp);
     void loadEaxInd();
+    void storeEaxInd();
 
     void pushEax();
     void popEcx();
     void popEax();
     void movEcxEax();
+    void movEaxEcx();
     void movEaxEdx();
+    void movEdxEax();
+    void movEcxEdx();
 
     void addEaxEcx();
     void subEaxEcx();
@@ -50,6 +54,8 @@ public interface arch {
     void testEaxEax();
     void branchIfZero(int label);
     void branchIfNonZero(int label);
+    void branchIfGreater(int label);
+    void branchIfLess(int label);
     void call(int label);
     void addRspImm(int n);
 

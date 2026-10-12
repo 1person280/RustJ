@@ -26,6 +26,8 @@ public final class op {
     public static final int AND = 12;
     public static final int OR = 13;
     public static final int NOT = 14;
+    public static final int STD_MAX = 15;
+    public static final int STD_MIN = 16;
 
     private op() {
     }

@@ -19,7 +19,9 @@ import ast.field;
 import ast.ident;
 import ast.intlit;
 import ast.op;
+import ast.stdnode;
 import ast.structlit;
+import ast.swapnode;
 import ast.unop;
 import java.util.Map;
 
@@ -37,6 +39,8 @@ public final class eval {
         if (e instanceof call c) { emitCall(c, out, targets); return; }
         if (e instanceof borrow b) { emitBorrow(b, out, targets); return; }
         if (e instanceof deref d) { emit(d.operand, out, targets); out.loadEaxInd(); return; }
+        if (e instanceof stdnode s) { emitStd(s, out, targets); return; }
+        if (e instanceof swapnode sw) { emitSwap(sw, out, targets); return; }
         emitBinary((binop) e, out, targets);
     }
 
@@ -53,6 +57,37 @@ public final class eval {
         for (int i = c.args.size() - 1; i >= 0; i--) { emit(c.args.get(i), out, targets); out.pushEax(); }
         out.call(targets.get(c.name));
         out.addRspImm(c.args.size());
+    }
+
+    /* std::cmp::max/min(a,b)：EAX=左、ECX=右后比较；max 用 jg 保持较大值，min 用 jl 保持较小值。 */
+    private static void emitStd(stdnode s, arch out, Map<String, Integer> targets) {
+        emit(s.args.get(0), out, targets);
+        out.pushEax();
+        emit(s.args.get(1), out, targets);
+        out.movEcxEax();
+        out.popEax();
+        out.cmpEaxEcx();
+        int keep = out.newLabel();
+        if (s.kind == op.STD_MAX) out.branchIfGreater(keep); else out.branchIfLess(keep);
+        out.movEaxEcx();
+        out.bind(keep);
+    }
+
+    /* std::mem::swap(&mut a, &mut b)：先读 a 旧值到 edx 暂存、b 值到 ecx，写 [a]=bv，
+       再写 [b]=av；地址经 emit(borrow) 重算（disp 固定），栈中仅存 &a 作临时周转。 */
+    private static void emitSwap(swapnode sw, arch out, Map<String, Integer> targets) {
+        emit(sw.a, out, targets);
+        out.pushEax();
+        out.loadEaxInd();
+        out.movEdxEax();
+        emit(sw.b, out, targets);
+        out.loadEaxInd();
+        out.movEcxEax();
+        out.popEax();
+        out.storeEaxInd();
+        emit(sw.b, out, targets);
+        out.movEcxEdx();
+        out.storeEaxInd();
     }
 
     /* 栈机求值：左值入栈 → 右值算入 EAX → 取出左值 → 运算结果回 EAX。 */
