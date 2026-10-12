@@ -33,8 +33,8 @@ echo %ERRORLEVEL%
 
 | 包 | 职责 | 内容 |
 |---|---|---|
-| `ast/` | 纯数据语法树 | `expr` `intlit` `ident` `binop` `unop` `op` `call`；`stmt` `block` `letstmt` `assignstmt` `ifstmt` `whilestmt` `forstmt` `breakstmt` `continuestmt` `returnstmt`；`structdef` `structlit` `field` `fieldassignstmt` `program`；`function` |
-| `frontend/` | 词法、语法、符号表、调用校验 | `token` `lexer` `cursor` `parser` `stmts` `exprs` `logic` `calls` `locals` `fields` `structs` |
+| `ast/` | 纯数据语法树 | `expr` `intlit` `ident` `binop` `unop` `op` `call` `borrow` `deref` `traitdef` `stdnode` `swapnode`；`stmt` `block` `letstmt` `assignstmt` `ifstmt` `whilestmt` `forstmt` `breakstmt` `continuestmt` `returnstmt` `exprstmt`；`structdef` `structlit` `field` `fieldassignstmt` `program`；`function` |
+| `frontend/` | 词法、语法、符号表、语义 pass | `token` `lexer` `cursor` `parser` `stmts` `exprs` `logic` `calls` `locals` `fields` `structs` `modules` `vis` `genparse` `generics` `traits` `borrows` `stdlib` |
 | `backend/` | 机器码、目标文件、链接、PE | `arch` `x64` `codebuffer` `codegen` `blockgen` `eval` `logicemit` `coff` `lld` `pe` |
 | `cache/` | 增量编译缓存（键/块文件/存取/合并） | `keys` `blockfile` `store` `merge` |
 | `error/` | 共用编译期错误 | `rustjerror` |
@@ -67,12 +67,15 @@ echo %ERRORLEVEL%
 | **0.2.3** | 2026-10-11 | **3c 泛型基础**：泛型函数 / 泛型结构体单态化展开——`fn foo<T>(x: T)` 泛型参数解析与调用点按实参类型实例化（新增 `frontend/genparse` 泛型类型/签名解析、`frontend/generics` 单态化展开：`instCall`/`inferArg`/`instFn`/`instSt`/`checkInst`/`inferStruct`/`typeOf`/`bareCheck`），`locals` 按类型维度分配、`exprs`/`fields`/`parser`/`structs` 扩展泛型类型节点与调用路径，泛型结构体 `struct Box<T> { v: T }` 构造/字段访问单态化，字段字面量 `lit` 查表适配泛型类型；示例 `generic.rs`（`id(3)`+`bx.get()(41)`+`bx.v(41)`+`add1(7)`=93）退出码断言 93，十二例回归不变。下一版本目标：见 [计划 0005 · RustJ 三期计划](docs/0005-RustJ三期计划.md) 3d |
 | **0.2.4** | 2026-10-11 | **3d trait 静态分发**：trait 定义与实现、静态分发——`trait 名 { fn 签名; }` 仅声明签名、`impl 名 for 类型 { 方法体 }` 提供实现（新增 `ast/traitdef` 纯数据节点、`frontend/traits` 定义登记 + impl 校验 + 调用绑定），方法签名不支持 `&self`（借用属 3e，沿用 `self` 按值展开字段参数），调用点 `obj.method()` 固有方法优先、未命中查类型实现的 trait 方法、多 trait 同名报「方法名不明确」，符号统一 `类型__方法` 后端零改动，`pub trait` 复用 3b 可见性体系；示例 `trait.rs`（`Dog`/`Cat` 各自 `impl Talk for`，`d.talk()+c.talk()`=42）退出码断言 42，十二例回归不变。下一版本目标：见 [计划 0005 · RustJ 三期计划](docs/0005-RustJ三期计划.md) 3e |
 | **0.2.5** | 2026-10-11 | **3e 借用检查基础**：最小引用语法 `&expr`/`&mut expr`/`*r` 与编译期借用检查——新增 `ast/borrow`（isMut）、`ast/deref` 纯数据节点、`frontend/borrows` 独立语义 pass（AST 构建后、codegen 前），规则：i32/bool 标量赋值/传参为 Copy 不移动，结构体赋值/传参为 move（再读报 `use-after-move` 带行号）；同一变量同时仅一个可变借用或多个只读借用、混用报「借用冲突」；NLL 简化版——借用存活到最后一次使用，离开块或末次使用后释放；`*r` 要求 r 为引用；词法层新增 `&`/`*` 单字符 token，`&mut` 由 parser 拼装；backend 仅新增 `leaEax`（borrow）/`loadEaxInd`（deref）两节点发射，ABI/栈布局不变；非法用例 `bad_move.rs`/`bad_borrow.rs` 断言编译失败+带行号错误；示例 `borrow.rs`（多只读共存/NLL 再借用/标量 Copy/结构体 move）退出码断言 17，十三例回归不变。下一版本目标：见 [计划 0005 · RustJ 三期计划](docs/0005-RustJ三期计划.md) 3f |
+| **0.2.6** | 2026-10-12 | **3f std 白名单**：编译期内置展开（不碰真实 `std.rlib`）——`std::mem::size_of::<T>()`（i32=4、bool=1、结构体=字段数×4）、`std::mem::swap(&mut,&mut)`（展开三条指令，借用复用 3e）、`std::cmp::max(a,b)`/`std::cmp::min(a,b)` 白名单映射（新增 `ast/exprstmt`/`stdnode`/`swapnode`、`frontend/stdlib`：`build(...)` 已消费 `std` 或短名首段后读取 `::名称`，全限定递归剥一段，命中白名单产出 ast 节点）；turbofish `::<T>` 为唯一新语法（lexer 不加新 token，`:` 与 `<` 已有）；全限定 `std::xxx` 与 `use std::mem;` 短名 `mem::xxx` 均有效；未实现路径抛「std 路径未实现」带行号错误；修复 swap 展开崩溃（`movEdxEax` 0x89 0xC2 暂存 a 旧值，清 `RustJ/RustJ/incremental` 缓存重编，双向交换 t3=33/t5=22/t7=11/t9=11）；示例 `std.rs` 退出码断言 62，`bad_std.rs` 带行号编译失败断言，17 例回归不变。下一版本目标：见 [计划 0005 · RustJ 三期计划](docs/0005-RustJ三期计划.md) 3g |
 
 ## 文档
 
 - [计划 0003 · RustJ 编译器](docs/0003-RustJ编译器.md) —— 上游定位 / 分发 / 分期
 - [计划 0004 · RustJ 二期实现](docs/0004-RustJ二期实现.md) —— 最小原生链路落地计划与进度
 - [计划 0005 · RustJ 三期计划](docs/0005-RustJ三期计划.md) —— 三期路线（结构体/模块/泛型·trait/sysroot/增量缓存）与产出判据
+- [计划 0006 · RustJ 三期实现](docs/0006-RustJ三期实现.md) —— 三期实现与进度（3a~3f 已验证，3g/终靶计划中）
+- [计划 0007 · RustJ 真实项目追赶](docs/0007-RustJ真实项目追赶.md) —— 终靶前置语言缺口补齐专项（枚举/字符串·集合/浮点·方法/工程化收口，草案）
 
 ## 许可
 

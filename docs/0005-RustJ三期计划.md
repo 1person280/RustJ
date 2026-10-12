@@ -1,6 +1,6 @@
 # 计划 0005 · RustJ 三期计划（真实工程可编译）
 
-> **状态：部分已验证** —— 2c sysroot 接入 + 2d 增量缓存已于 0.2.0 落地，3a 结构体已于 0.2.1 落地，3b 模块系统已于 0.2.2 落地，3c 泛型基础已于 0.2.3 落地，3d trait 已于 0.2.4 落地，3e 借用检查基础已于 0.2.5 落地（均见 [README 版本历史](../README.md)），验证：`sysroot.rs` 退出码断言 44、`struct.rs` 退出码断言 7、`mod.rs` 退出码断言 35、`generic.rs` 退出码断言 93、`trait.rs` 退出码断言 42、`borrow.rs` 退出码断言 17、`bad_move.rs`/`bad_borrow.rs` 非法用例编译失败断言、十三例回归不变；剩余 3f/3g 仍为计划中（草案），动手前经 `plan-interrogation` 逐条确认后落地。
+> **状态：部分已验证** —— 2c sysroot 接入 + 2d 增量缓存已于 0.2.0 落地，3a 结构体已于 0.2.1 落地，3b 模块系统已于 0.2.2 落地，3c 泛型基础已于 0.2.3 落地，3d trait 已于 0.2.4 落地，3e 借用检查基础已于 0.2.5 落地，**3f std 白名单已于 0.2.6 落地并验证**（均见 [README 版本历史](../README.md)），验证：`sysroot.rs` 退出码断言 44、`struct.rs` 退出码断言 7、`mod.rs` 退出码断言 35、`generic.rs` 退出码断言 93、`trait.rs` 退出码断言 42、`borrow.rs` 退出码断言 17、`std.rs` 退出码断言 62、`bad_move.rs`/`bad_borrow.rs`/`bad_std.rs` 非法用例编译失败断言（`bad_std.rs` 带行号）、十七例回归不变；剩余 3g（缓存指纹）与终靶（`ServerCode` 纯逻辑部分编译）仍为计划中（草案），动手前经 `plan-interrogation` 逐条确认后落地。
 > **归属版本：不绑定游戏版本号** —— 沿用 [`0003-RustJ编译器.md`](0003-RustJ编译器.md) 定位：RustJ 是随仓库分发的独立工具，
 > 不触碰线格式 → **不触发 `y+1`**、不打 tag、不写 BarekHistory（发布动作按 compliant-delivery 三闸门执行）。
 > **上游设计**：本计划承接 [`0003`](0003-RustJ编译器.md)〈四、分期路线〉的**三期（终靶）**；二期落地见 [`0004-RustJ二期实现.md`](0004-RustJ二期实现.md)。
@@ -40,7 +40,7 @@
 | 3c | **泛型基础**：泛型函数 / 泛型结构体，单态化展开 | ✅ 已验证（0.2.3）：`TestCode/generic.rs` 退出码断言 93；十二例回归不变 |
 | 3d | **trait**：trait 定义与实现、静态分发（动态分发 / 对象安全后置） | ✅ 已验证（0.2.4）：`TestCode/trait.rs` 退出码断言 42；十二例回归不变 |
 | 3e | **借用检查基础**：所有权 / 借用 / 生命周期基础，未决错误带行号 `rustjerror` | ✅ 已验证（0.2.5）：`TestCode/borrow.rs` 退出码断言 17，`bad_move.rs`/`bad_borrow.rs` 编译失败断言；十三例回归不变 |
-| 3f | **sysroot 接入（2c）**：core / alloc / std 的 `.rlib` 随 jar 打包、首次运行解压 | 编译引用 `std` 的用例成功并正确执行 |
+| 3f | **std 白名单（编译期内置展开）**：`std::mem::size_of`/`swap`、`std::cmp::max`/`min` 白名单展开（不碰真实 `.rlib`），turbofish `::<T>` 为唯一新语法，未实现路径带行号报错 | ✅ 已验证（0.2.6）：编译引用 `std` 的用例成功并正确执行——`TestCode/std.rs` 退出码断言 62，`bad_std.rs` 带行号编译失败断言；17 例回归不变 |
 | 3g | **增量缓存（2d）**：缓存键 + 依赖指纹 + working/finalized 会话隔离 | 二次编译命中缓存、产物一致 |
 | 终靶 | **`ServerCode` 纯逻辑部分**编译 + 确定性测试 | 行为与 `cargo test` 一致，通过其确定性测试 |
 
@@ -71,7 +71,7 @@ java -jar RustJ.jar TestCode/<用例>.rs
 .\RustJ\out\main.exe; echo "exit=$LASTEXITCODE"
 ```
 
-- **回归**：`min`（0）/ `arith`（7）/ `ops`（7）/ `flow`（55）/ `call`（407）/ `for`（29）/ `bool`（35）/ `struct`（7）八例退出码断言不变。
+- **回归（17 例）**：正例 14 项退出码断言全绿 —— `min`（0）/ `arith`（7）/ `ops`（7）/ `flow`（55）/ `call`（407）/ `for`（29）/ `bool`（35）/ `mod`（35）/ `struct`（7）/ `sysroot`（44）/ `trait`（42）/ `generic`（93）/ `borrow`（17）/ `std`（62）；`helper.rs` 为 `mod.rs` 依赖文件，`helper` 用例退出码 0 亦通过。反例 3 项编译失败断言 —— `bad_move` / `bad_borrow` / `bad_std`（带行号 `rustjerror`，退出码 1）。
 - **每步新用例**：按上表对应退出码断言。
 - **终靶**：`ServerCode` 纯逻辑部分经 RustJ 编译后的行为与 `cargo test` 一致。
 
